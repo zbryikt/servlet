@@ -62,13 +62,13 @@ base = do
 
   update-user: (req) -> req.logIn req.user, ->
 
-  # sample data, from g0v.photos
+  # sample configuration
   config: -> do
     clientID: \252332158147402
     clientSecret: \763c2bf3a2a48f4d1ae0c6fdc2795ce6
     session-secret: \featureisameasurableproperty
     url: \http://localhost/
-    name: \template
+    name: \servlet
     mongodbUrl: \mongodb://localhost/
     port: \9000
     mail: do
@@ -85,7 +85,7 @@ base = do
     app.use body-parser.json!
     app.use body-parser.urlencoded extended: true
     app.set 'view engine', 'jade'
-    app.use \/s, express.static("#__dirname/static")
+    app.use \/, express.static("#__dirname/static")
     app.set 'views', path.join(__dirname, 'jade')
 
     passport.use new passport-local.Strategy {
