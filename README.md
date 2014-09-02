@@ -22,7 +22,7 @@ File Structure
 ========
 
 * db - for mongodb database
-* jade - for backend served template. check jade/index.jade for your hello world at http://localhost/.
+* view - for backend served template. check view/index.jade for your hello world at http://localhost/.
 * src - livescript and sass code
 * static - all built file and static files. keep static/css and static/js clean without modify them.
 * static/assets - all external libraries
@@ -36,7 +36,7 @@ File Structure
 Configuration
 ========
 
-by default, some javascript libraries are included. Config to use them or cdn by editing following code in jade/index.jade:
+by default, some javascript libraries are included. Config to use them or cdn by editing following code in view/index.jade:
 
     - var usecdn = false
     - var lib = { jquery: true, d3js: true, angular: true, bootstrap: false, semantic: true }

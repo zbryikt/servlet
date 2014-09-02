@@ -1,6 +1,6 @@
 require! <[fs path child_process express mongodb body-parser crypto chokidar]>
 require! <[passport passport-local passport-facebook express-session]>
-require! <[nodemailer nodemailer-smtp-transport]>
+require! <[nodemailer nodemailer-smtp-transport LiveScript]>
 
 RegExp.escape = -> it.replace /[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"
 
@@ -33,6 +33,13 @@ sass-tree = do
       if @up-hash.[][f].length == 0 => ret.push f
       else work ++= @up-hash[f]
     ret
+
+lsc = (path, options, callback) ->
+  try
+    [err,ret] = [null,LiveScript.compile((fs.read-file-sync path .toString!))]
+  catch e
+    [err,ret] = [e,""]
+  callback err, ret
 
 ftype = ->
   switch
@@ -71,6 +78,7 @@ base = do
     name: \servlet
     mongodbUrl: \mongodb://localhost/
     port: \9000
+    debug: true
     mail: do
       host: \box590.bluehost.com
       port: 465
@@ -85,8 +93,9 @@ base = do
     app.use body-parser.json!
     app.use body-parser.urlencoded extended: true
     app.set 'view engine', 'jade'
+    app.engine \ls, lsc
     app.use \/, express.static("#__dirname/static")
-    app.set 'views', path.join(__dirname, 'jade')
+    app.set 'views', path.join(__dirname, 'view')
 
     passport.use new passport-local.Strategy {
       usernameField: \email
@@ -153,6 +162,10 @@ base = do
     @ <<< {config, app, express, router, postman}
 
   start: (cb) ->
+
+    if !@config.debug => 
+      @app.use (err, req, res, next) -> if err => res.status 500 .render '500' else next!
+
     server = @app.listen @config.port, -> console.log "listening on port #{server.address!port}"
     mongodb.MongoClient.connect "#{@config.mongodbUrl}#{@config.name}", (e, db) ~> 
       if !db => 
