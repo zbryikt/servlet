@@ -16,6 +16,24 @@ mkdir-recurse = ->
     mkdir-recurse path.dirname it
     fs.mkdir-sync it
 
+sass-tree = do
+  down-hash: {}
+  up-hash: {}
+  parse: (filename) ->
+    dir = path.dirname(filename)
+    ret = fs.read-file-sync filename .toString!split \\n .map(-> /^ *@import (.+)/.exec it)filter(->it)map(->it.1)
+    ret = ret.map -> path.join(dir, it.replace(/(\.sass)?$/, ".sass"))
+    @down-hash[filename] = ret
+    for it in ret => if not (filename in @up-hash.[][it]) => @up-hash.[][it].push filename
+  find-root: (filename) ->
+    work = [filename]
+    ret = []
+    while work.length > 0
+      f = work.pop!
+      if @up-hash.[][f].length == 0 => ret.push f
+      else work ++= @up-hash[f]
+    ret
+
 ftype = ->
   switch
   | /\.ls$/.exec it => "ls"
@@ -161,9 +179,13 @@ base = do
       des = des.replace /\.ls$/, ".js"
       cmd = "#ls -cbp #src > #des"
     else if type == \sass => 
-      des = src.replace \src/sass, \static/css
-      des = des.replace /\.sass/, ".css"
-      cmd = "#sass #src #des"
+      sass-tree.parse src
+      srcs = sass-tree.find-root src
+      srcs = srcs.map (src) ->
+        des = src.replace \src/sass, \static/css
+        des = des.replace /\.sass/, ".css"
+        cmd = "#sass #src #des"
+      cmd = srcs.join \;
     else => return
     if !cmd => return
     if des => 
