@@ -206,7 +206,7 @@ base = do
       cmd = cmd.join \;
     else => return
     if !cmd => return
-    if dess.length => for des in dess.map(->path.dirname it) =>
+    if dess.length => for dir in dess.map(->path.dirname it) =>
       if !fs.exists-sync dir => mkdir-recurse dir
     console.log "[BUILD] #cmd"
     child_process.exec cmd, log
