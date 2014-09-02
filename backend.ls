@@ -35,8 +35,11 @@ sass-tree = do
     ret
 
 lsc = (path, options, callback) ->
+  opt = {} <<< options
+  delete opt.settings
   try
-    [err,ret] = [null,LiveScript.compile((fs.read-file-sync path .toString!))]
+    [err,ret] = [null, LiveScript.compile((fs.read-file-sync path .toString!))]
+    ret = "var req = #{JSON.stringify(opt)}; #ret"
   catch e
     [err,ret] = [e,""]
   callback err, ret

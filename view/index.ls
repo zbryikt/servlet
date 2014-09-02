@@ -1,2 +1,1 @@
-console.log \he
-e d s  [ ] w 2 ~ -
+console.log req.word
