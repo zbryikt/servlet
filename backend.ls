@@ -189,23 +189,24 @@ base = do
   watch-handler: ->
     src = if it.0 != \/ => path.join(cwd,it) else it
     src = src.replace path.join(cwd,\/), ""
-    [type,cmd] = [ftype(src), ""]
+    [type,cmd,dess] = [ftype(src), "",[]]
     if type == \ls => 
       des = src.replace \src/ls, \static/js
       des = des.replace /\.ls$/, ".js"
       cmd = "#ls -cbp #src > #des"
+      dess.push des
     else if type == \sass => 
       sass-tree.parse src
       srcs = sass-tree.find-root src
-      srcs = srcs.map (src) ->
+      cmd = srcs.map (src) ->
         des = src.replace \src/sass, \static/css
         des = des.replace /\.sass/, ".css"
-        cmd = "#sass #src #des"
-      cmd = srcs.join \;
+        dess.push des
+        "#sass #src #des"
+      cmd = cmd.join \;
     else => return
     if !cmd => return
-    if des => 
-      dir = path.dirname des
+    if dess.length => for des in dess.map(->path.dirname it) =>
       if !fs.exists-sync dir => mkdir-recurse dir
     console.log "[BUILD] #cmd"
     child_process.exec cmd, log
