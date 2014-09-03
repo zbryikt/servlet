@@ -3,7 +3,7 @@ doctype html
 - var usecdn = false
 - var useog = false
 - var lib = { jquery: true, d3js: true, angular: true, bootstrap: true, semantic: false }
-- var assets = "/s/assets"
+- var assets = "/assets"
 - var thumbnail = "http://dummy.thumbnail"
 html(lang="en")
   head(prefix="og: http://ogp.me/ns#")
@@ -12,7 +12,7 @@ html(lang="en")
     // libraries
     include library.jade
     // custom files
-    link(rel="stylesheet",type="text/css",href="/s/css/index.css")
-    script(type="text/javascript",src="/s/js/index.js")
+    link(rel="stylesheet",type="text/css",href="/css/index.css")
+    script(type="text/javascript",src="/js/index.js")
   body
     h3 #{word}
