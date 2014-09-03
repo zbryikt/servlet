@@ -164,9 +164,11 @@ base = do
 
     multi = do
       parser: connect-multiparty!
-      clean: (cb) -> (req, res, next) ->
-        cb req, res, next
+      clean: (req, res, next) ->
         for k,v of req.files => if fs.exists-sync v.path => fs.unlink v.path
+      cleaner: (cb) -> (req, res, next) ~>
+        if cb => cb req, res, next
+        @clean req, res, next
 
     @watch!
     @ <<< {config, app, express, router, postman, multi}
