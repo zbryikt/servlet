@@ -1,6 +1,7 @@
 require! <[fs path child_process express mongodb body-parser crypto chokidar]>
 require! <[passport passport-local passport-facebook express-session]>
 require! <[nodemailer nodemailer-smtp-transport LiveScript]>
+require! <[connect-multiparty]>
 
 RegExp.escape = -> it.replace /[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"
 
@@ -160,9 +161,15 @@ base = do
         failureRedirect: \/u/403
 
     postman = nodemailer.createTransport nodemailer-smtp-transport config.mail
-    @watch!
 
-    @ <<< {config, app, express, router, postman}
+    multi = do
+      parser: connect-multiparty!
+      clean: (cb) -> (req, res, next) ->
+        cb req, res, next
+        for k,v of req.files => if fs.exists-sync v.path => fs.unlink v.path
+
+    @watch!
+    @ <<< {config, app, express, router, postman, multi}
 
   start: (cb) ->
 
