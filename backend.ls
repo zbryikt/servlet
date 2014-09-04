@@ -83,6 +83,7 @@ base = do
     mongodbUrl: \mongodb://localhost/
     port: \9000
     debug: true
+    limit: '20mb'
     mail: do
       host: \box590.bluehost.com
       port: 465
@@ -91,11 +92,24 @@ base = do
       maxMessages: 10
       auth: {user: 'noreply@g0v.photos', pass: ''}
 
+  getUser: (u, p, usepasswd, detail, done) ->
+    if usepasswd => p = crypto.createHash(\md5).update(p).digest(\hex)
+    (e,r) <- base.cols.user.findOne {email: u}
+    if !r =>
+      name = if detail => detail.displayName or detail.username else u.replace(/@.+$/, "")
+      user = {email: u, passwd: p, usepasswd, name, detail}
+      (e,r) <- base.cols.user.insert user, {w: 1}
+      if !r => return done {server: "failed to create user"}, false
+      return done null, user
+    else
+      if !usepasswd or r.passwd == p => return done null, r
+      done null, false
+
   init: (config) ->
     config = {} <<< @config! <<< config
     app = express!
-    app.use body-parser.json!
-    app.use body-parser.urlencoded extended: true
+    app.use body-parser.json limit: config.limit
+    app.use body-parser.urlencoded extended: true, limit: config.limit
     app.set 'view engine', 'jade'
     app.engine \ls, lsc
     app.use \/, express.static("#__dirname/static")
@@ -104,24 +118,15 @@ base = do
     passport.use new passport-local.Strategy {
       usernameField: \email
       passwordField: \passwd
-    },(u,p,done) ->
-      p = crypto.createHash(\md5).update(p).digest(\hex)
-      (e,r) <- base.cols.user.findOne {email: u}
-      if !r =>
-        user = {email: u, passwd: p, name: u.replace(/@.+$/, "")}
-        (e,r) <- base.cols.user.insert user, {w: 1}
-        if !r => return done {server: "failed to create user"}, false
-        return done null, user
-      else
-        if r.passwd == p => return done null, r
-        done null, false
+    },(u,p,done) ~> @getUser u, p, true, null, done
+
     passport.use new passport-facebook.Strategy(
       do
         clientID: config.clientID
         clientSecret: config.clientSecret
         callbackURL: "#{config.url}u/auth/facebook/callback"
-      , (access-token, refresh-token, profile, done) ->
-        done null, profile
+      , (access-token, refresh-token, profile, done) ~>
+        @getUser profile.emails.0.value, null, false, profile, done
     )
 
     app.use express-session secret: config.session-secret, resave: false, saveUninitialized: false
@@ -157,13 +162,13 @@ base = do
         res.redirect \/
       ..get \/auth/facebook, passport.authenticate \facebook
       ..get \/auth/facebook/callback, passport.authenticate \facebook, do
-        successRedirect: \/u/200
+        successRedirect: \/
         failureRedirect: \/u/403
 
     postman = nodemailer.createTransport nodemailer-smtp-transport config.mail
 
     multi = do
-      parser: connect-multiparty!
+      parser: connect-multiparty limit: config.limit
       clean: (req, res, next) ->
         for k,v of req.files => if fs.exists-sync v.path => fs.unlink v.path
       cleaner: (cb) -> (req, res, next) ~>
