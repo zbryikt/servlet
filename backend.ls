@@ -52,7 +52,24 @@ ftype = ->
   | /\.jade$/.exec it => "jade"
   | otherwise => "other"
 
+#TODO implement this
+session-store = (ds) -> @ <<<
+  ds: ds
+  get: (sid, cb) ->
+  set: (sid, session, cb) ->
+  destroy: (sid, cb) ->
+session-store.prototype = express-session.Store.prototype
+
 base = do
+  r500: (res, error) ->
+    console.log:[ERROR] #error"
+    res.status(500).json({detail:error})
+  r404: (res) -> res.status(404)send!
+  r403: (res) -> res.status(403)send!
+  r400: (res) -> res.status(400)send!
+  r200: (res) -> res.send!
+  OID: -> mongodb.ObjectID
+
   authorized: (cb) -> (req, res) ->
     if not (req.user and req.user.isStaff) => return res.status(403).render('403', {url: req.originalUrl})
     cb req, res
@@ -140,9 +157,11 @@ base = do
       user: express.Router!
       api: express.Router!
 
-    app.use "/d", router.api
-    app.use "/u", router.user
-    app.get "/d/health", (req, res) -> res.json {}
+    app
+      ..use "/d", router.api
+      ..use "/u", router.user
+      ..get "/d/health", (req, res) -> res.json {}
+      ..get \/context, (req, res) -> res.render \backend.ls, {user: req.user}
 
     router.user
       ..get \/null, (req, res) -> res.json {}
@@ -197,6 +216,9 @@ base = do
   ignore-func: (f) -> @ignore-list.filter(-> it.exec f.replace(cwd-re, "")replace(/^\.\/+/, ""))length
   watch-path: \src
   watch: ->
+    # Q: maybe it's not right to create both media and src + static here ?
+    <[media src src/ls src/sass static static/css static/js]>.map ->
+      if !fs.exists-sync it => fs.mkdir-sync it
     watcher = chokidar.watch @watch-path, ignored: (~> @ignore-func it), persistent: true
       .on \add, @watch-handler
       .on \change, @watch-handler

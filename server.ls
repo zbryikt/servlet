@@ -1,7 +1,8 @@
 require! <[./backend]>
 require! <[LiveScript fs]>
 
-config = {debug: true}
+config = {debug: true, name: \servlet}
+config <<< secret.config{clientID, clientSecret}
 backend.init config
 
 backend.app.get \/, (req, res) -> res.render 'index.jade', {word: "hello world"}
