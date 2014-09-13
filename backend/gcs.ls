@@ -13,7 +13,7 @@ base = do
 
   init: ({gcs: c}) ->
     if c.keyFilename and !fs.exists-sync c.keyFilename => delete c.keyFilename
-    @ds = new datastore.Dataset c
+    ds = @ds = new datastore.Dataset c
     cb {ds}
 
   get-user: (username, password, usepasswd, detail, newuser, callback) ->

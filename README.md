@@ -45,13 +45,14 @@ by default, some javascript libraries are included. Config to use them or cdn by
 To config your backend, check sample configuration in backend.ls. It's a base config and can be overwritten by the one provided in server.ls. Please keep backend.ls clean and patch it in server.ls. Explanation as follows:
 
 
-    clientID: < app id of your facebook >
-    clientSecret: < secret of your facebook app >
     session-secret: < a random string for keeping session secure >
     url: < base url of your domain >
     name: < project name, use in mongodb >
     mongodbUrl: < mongodb server url >
     port: < backend server port of listen >
+    facebook:
+      clientID: < app id of your facebook >
+      clientSecret: < secret of your facebook app >
     mail: do
       host: < outgoing mail server hostname >
       port: < outgoing mail server port >

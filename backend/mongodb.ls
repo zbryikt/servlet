@@ -1,3 +1,5 @@
+require! <[mongodb]>
+
 base = do
   ds: null
   aux: {}
@@ -9,7 +11,7 @@ base = do
         throw new Error e
       (e, user) <~ db.collection \user
       (e, session) <~ db.collection \session
-      ds = {user, session}
+      ds = @ds = {user, session}
       cb {ds}
 
   stream-writer: (res, stream) ->
@@ -24,19 +26,19 @@ base = do
       res.send!
 
   get-user: (username, password, usepasswd, detail, newuser, callback) ->
-    (e,user) <- @cols.user.findOne {username: username}
+    (e,user) <~ @ds.user.findOne {username: username}
     if !user =>
       user = newuser username, password, usepasswd, detail
-      (e,r) <- @cols.user.insert user, {w: 1}
-      if !r => return done {server: "failed to create user"}, false
+      (e,r) <- @ds.user.insert user, {w: 1}
+      if !r => return callback {server: "failed to create user"}, false
     else
-      if (usepasswd or user.usepasswd) and user.password != password => return done null, false
+      if (usepasswd or user.usepasswd) and user.password != password => return callback null, false
     delete user.password
-    return done null, user
+    return callback null, user
 
   session-store: -> do
-    get: (sid, cb) ~> @cols.session.findOne {sid}, cb
-    set: (sid, session, cb) ~> @cols.session.update {sid}, {$set: session}, {w:1}, cb
-    destroy: (sid, cb) ~> @cols.session.remove {sid}, {w:1}, cb
+    get: (sid, cb) ~> @ds.session.findOne {sid}, cb
+    set: (sid, session, cb) ~> @ds.session.update {sid}, {$set: session}, {w:1}, cb
+    destroy: (sid, cb) ~> @ds.session.remove {sid}, {w:1}, cb
 
 module.exports = base

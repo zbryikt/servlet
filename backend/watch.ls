@@ -1,5 +1,7 @@
 require! <[fs path chokidar child_process]>
 
+RegExp.escape = -> it.replace /[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"
+
 ls   = if fs.existsSync v=\node_modules/.bin/livescript => v else \livescript
 jade = if fs.existsSync v=\node_modules/.bin/jade => v else \jade
 sass = if fs.existsSync v=\node_modules/.bin/sass => v else \sass
@@ -64,7 +66,7 @@ base = do
         des = src.replace \src/sass, \static/css
         des = des.replace /\.sass/, ".css"
         dess.push des
-        "#sass #src #des"
+        "#sass --sourcemap=none #src #des"
       cmd = cmd.join \;
     else => return
     if !cmd => return
@@ -73,4 +75,4 @@ base = do
     console.log "[BUILD] #cmd"
     child_process.exec cmd, log
 
-module.exports = watcher
+module.exports = base

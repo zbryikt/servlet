@@ -4,8 +4,6 @@ require! <[nodemailer nodemailer-smtp-transport LiveScript]>
 require! <[connect-multiparty]>
 require! <[./aux ./watch]>
 
-RegExp.escape = -> it.replace /[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"
-
 lsc = (path, options, callback) ->
   opt = {} <<< options
   delete opt.settings
@@ -29,14 +27,16 @@ backend = do
 
   # sample configuration
   config: -> do
-    clientID: \252332158147402
-    clientSecret: \763c2bf3a2a48f4d1ae0c6fdc2795ce6
     session-secret: \featureisameasurableproperty
     url: \http://localhost/
     name: \servlet
     port: \9000
     debug: true
     limit: '20mb'
+
+    facebook:
+      clientID: \252332158147402
+      clientSecret: \763c2bf3a2a48f4d1ae0c6fdc2795ce6
 
     cookie:
       domain: \.g0v.photos
@@ -57,19 +57,19 @@ backend = do
       auth: {user: 'noreply@g0v.photos', pass: ''}
 
   newUser: (username, password, usepasswd, detail) ->
-    name = if detail => detail.displayName or detail.username else username.replace(/@.+$/, "")
+    displayname = if detail => detail.displayName or detail.username else username.replace(/@.+$/, "")
     user = {username, password, usepasswd, displayname, detail, create_date: new Date!}
 
   getUser: (username, password, usepasswd, detail, done) ->
     password = if usepasswd => crypto.createHash(\md5).update(password).digest(\hex) else ""
     @dd.get-user username, password, usepasswd, detail, @newUser, done
 
-
-  session-store: -> @ <<< @dd.session-store!
+  session-store: (backend) -> @ <<< backend.dd.session-store!
 
   init: (config, driver) ->
     config = {} <<< @config! <<< config
     @dd = driver
+    @dd.init config, ~> @ <<< it
     aux <<< driver.aux
 
     @session-store.prototype = express-session.Store.prototype
@@ -79,8 +79,8 @@ backend = do
     app.use body-parser.urlencoded extended: true, limit: config.limit
     app.set 'view engine', 'jade'
     app.engine \ls, lsc
-    app.use \/, express.static("#__dirname/static")
-    app.set 'views', path.join(__dirname, 'view')
+    app.use \/, express.static(path.join(__dirname, '../static'))
+    app.set 'views', path.join(__dirname, '../view')
 
     passport.use new passport-local.Strategy {
       usernameField: \email
@@ -89,19 +89,19 @@ backend = do
 
     passport.use new passport-facebook.Strategy(
       do
-        clientID: config.clientID
-        clientSecret: config.clientSecret
+        clientID: config.facebook.clientID
+        clientSecret: config.facebook.clientSecret
         callbackURL: "/u/auth/facebook/callback"
         profileFields: ['id', 'displayName', 'link', 'emails']
       , (access-token, refresh-token, profile, done) ~>
-        @getUser profile.emails.0.value, null, false, profile, @newuser, done
+        @getUser profile.emails.0.value, null, false, profile, done
     )
 
-    app.use express-session 
+    app.use express-session do
       secret: config.session-secret
       resave: true
       saveUninitialized: true
-      store: new @session-store!
+      store: new @session-store @
       cookie: do
         #secure: true # TODO: https. also need to dinstinguish production/staging
         path: \/
@@ -159,8 +159,7 @@ backend = do
 
   start: (cb) ->
     if !@config.debug => @app.use (err, req, res, next) -> if err => res.status 500 .render '500' else next!
-    @dd.init @config, ~> @ <<< it
-    @watch.start!
+    watch.start!
     server = @app.listen @config.port, -> console.log "listening on port #{server.address!port}"
     cb @
 
