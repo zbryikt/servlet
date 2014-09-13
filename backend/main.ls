@@ -69,7 +69,6 @@ backend = do
   init: (config, driver) ->
     config = {} <<< @config! <<< config
     @dd = driver
-    @dd.init config, ~> @ <<< it
     aux <<< driver.aux
 
     @session-store.prototype = express-session.Store.prototype
@@ -158,6 +157,8 @@ backend = do
     @ <<< {config, app, express, router, postman, multi}
 
   start: (cb) ->
+    <~ @dd.init @config
+    @ <<< it
     if !@config.debug => @app.use (err, req, res, next) -> if err => res.status 500 .render '500' else next!
     watch.start!
     server = @app.listen @config.port, -> console.log "listening on port #{server.address!port}"

@@ -5,14 +5,15 @@ base = do
   aux: {}
 
   init: ({mongodb: config, name: name}, cb) ->
-    mongodb.MongoClient.connect "#{config.url}#{name}", (e, db) ~> 
-      if !db => 
-        console.log "[ERROR] can't connect to mongodb server:"
-        throw new Error e
-      (e, user) <~ db.collection \user
-      (e, session) <~ db.collection \session
-      ds = @ds = {user, session}
-      cb {ds}
+    (e, db) <~ mongodb.MongoClient.connect "#{config.url}#{name}"
+    if !db => 
+      console.log "[ERROR] can't connect to mongodb server:"
+      throw new Error e
+    (e, user) <~ db.collection \user
+    (e, session) <~ db.collection \session
+    @ds = ds = {user, session}
+    @db = db
+    cb {ds, db}
 
   stream-writer: (res, stream) ->
     first = true
