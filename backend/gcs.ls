@@ -1,3 +1,6 @@
+require! <[fs gcloud]>
+datastore = gcloud.datastore
+
 aux = do
   clean: (obj) ->
     for k,v of obj =>
@@ -12,7 +15,7 @@ base = do
   aux: aux
 
   init: ({gcs: c}) ->
-    if c.keyFilename and !fs.exists-sync c.keyFilename => delete c.keyFilename
+    if c.keyFilename and !fs.exists-sync(c.keyFilename) => delete c.keyFilename
     ds = @ds = new datastore.Dataset c
     cb {ds}
 
