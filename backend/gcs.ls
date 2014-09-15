@@ -14,7 +14,7 @@ base = do
   ds: null
   aux: aux
 
-  init: ({gcs: c}) ->
+  init: ({gcs: c}, cb) ->
     if c.keyFilename and !fs.exists-sync(c.keyFilename) => delete c.keyFilename
     ds = @ds = new datastore.Dataset c
     cb {ds}
