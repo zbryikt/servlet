@@ -8,8 +8,9 @@ lsc = (path, options, callback) ->
   opt = {} <<< options
   delete opt.settings
   try
-    [err,ret] = [null, LiveScript.compile((fs.read-file-sync path .toString!))]
-    ret = "var req = #{JSON.stringify(opt)}; #ret"
+    source = fs.read-file-sync path .toString!
+    source = "req = #{JSON.stringify(opt)}\n#source"
+    [err,ret] = [null, LiveScript.compile source]
   catch e
     [err,ret] = [e,""]
   callback err, ret
