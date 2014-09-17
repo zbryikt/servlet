@@ -6,7 +6,7 @@ config = {debug: true, name: \servlet}
 config <<< secret
 backend.init config, driver
 
-backend.app.get \/global, (req, res) -> res.render \global.ls, {user: req.user}
+backend.app.get \/global, aux.type.json, (req, res) -> res.render \global.ls, {user: req.user, global: true}
 
 # remove after forked
 backend.app.get \/sample, (req, res) -> res.render 'sample/index.jade', {word1: "hello", context: {word2: "world"}}

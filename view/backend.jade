@@ -1,4 +1,4 @@
 script(type="text/javascript").
-  angular.module("backend", []).factory("context", function() { 
-    return !{JSON.stringify(context || {})};
+  angular.module("backend",[]).provider("context", function() { 
+    this.$get = function() { return !{JSON.stringify(context || {})}; };
   });

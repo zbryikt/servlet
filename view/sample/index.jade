@@ -1,5 +1,6 @@
 extends ../base.jade
 block body
+  script(type="text/javascript",src="/global")
   div(style="margin:20px")
     h1 Angular - Jade - Express Example
     h3 by jade template engine
@@ -14,7 +15,8 @@ block body
     blockquote(ng-app="sample",ng-controller="main")
       span {{word2}}
     script(type="text/javascript").
-      angular.module("sample", ["backend"]).controller("main", ["$scope", "context", function($scope, context) {
+      angular.module("sample", ["backend"]).controller("main", ["$scope", "context", "global", function($scope, context, global) {
         $scope.word2 = context.word2;
+        console.log("with global vars inside: ", context);
       }]);
     script(type="text/javascript",src="/sample.js")
