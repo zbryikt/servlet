@@ -9,5 +9,9 @@ base = do
   r400: (res) -> res.status(400)send!
   r200: (res) -> res.send!
   OID: -> mongodb.ObjectID
+  type:
+    json: (req, res, next) ->
+      res.set('Content-Type', 'application/json')
+      next!
 
 module.exports = base
