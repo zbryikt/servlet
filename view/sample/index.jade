@@ -16,6 +16,5 @@ block body
     script(type="text/javascript").
       angular.module("sample", ["backend"]).controller("main", ["$scope", "context", function($scope, context) {
         $scope.word2 = context.word2;
-        console.log("ok");
       }]);
     script(type="text/javascript",src="/sample.js")
