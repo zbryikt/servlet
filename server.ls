@@ -4,7 +4,7 @@ require! <[LiveScript fs ./secret]>
 
 config = {debug: true, name: \servlet}
 config <<< secret
-backend.init config, driver
+backend.init config, driver, ->
 
 backend.app.get \/global, aux.type.json, (req, res) -> res.render \global.ls, {user: req.user, global: true}
 
