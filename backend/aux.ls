@@ -2,7 +2,7 @@ require! mongodb
 
 base = do
   r500: (res, error) ->
-    console.log:[ERROR] #error"
+    console.log "[ERROR] #error"
     res.status(500).json({detail:error})
   r404: (res) -> res.status(404)send!
   r403: (res) -> res.status(403)send!
