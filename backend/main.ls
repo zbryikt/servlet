@@ -67,7 +67,7 @@ backend = do
 
   session-store: (backend) -> @ <<< backend.dd.session-store!
 
-  init: (config, driver) ->
+  init: (config, driver, cb) ->
     config = {} <<< @config! <<< config
     @dd = driver
     aux <<< driver.aux
@@ -77,10 +77,11 @@ backend = do
     app = express!
     app.use body-parser.json limit: config.limit
     app.use body-parser.urlencoded extended: true, limit: config.limit
-    app.set 'view engine', 'jade'
+    cb app
     app.engine \ls, lsc
     app.use \/, express.static(path.join(__dirname, '../static'))
     app.set 'views', path.join(__dirname, '../view')
+    app.locals.basedir = app.get \views
 
     passport.use new passport-local.Strategy {
       usernameField: \email
