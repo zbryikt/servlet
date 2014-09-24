@@ -78,6 +78,7 @@ backend = do
     app.use body-parser.json limit: config.limit
     app.use body-parser.urlencoded extended: true, limit: config.limit
     cb app
+    app.set 'view engine', 'jade'
     app.engine \ls, lsc
     app.use \/, express.static(path.join(__dirname, '../static'))
     app.set 'views', path.join(__dirname, '../view')
