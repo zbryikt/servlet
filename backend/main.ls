@@ -24,6 +24,11 @@ backend = do
     if not (req.user and req.user.isStaff) => return res.status(403).render('403', {url: req.originalUrl})
     cb req, res
 
+  # need login
+  needlogin: (cb) -> (req, res) ->
+    if not (req.user) => return res.status(403).render('403', {url: req.originalUrl})
+    cb req, res
+
   update-user: (req) -> req.logIn req.user, ->
 
   # sample configuration
