@@ -40,6 +40,7 @@ ftype = ->
   | /\.jade$/.exec it => "jade"
   | otherwise => "other"
 
+filecache = {}
 base = do
   ignore-list: [/^(.+\/)*?\.[^/]+$/]
   ignore-func: (f) -> @ignore-list.filter(-> it.exec f.replace(cwd-re, "")replace(/^\.\/+/, ""))length
@@ -47,10 +48,11 @@ base = do
     <[src src/ls src/sass static static/css static/js]>.map ->
       if !fs.exists-sync it => fs.mkdir-sync it
     watcher = chokidar.watch 'src', ignored: (~> @ignore-func it), persistent: true
-      .on \add, @watch-handler
-      .on \change, @watch-handler
-  watch-handler: ->
-    # TODO asynchronous build for reduce redundant building
+      .on \add, ~> @watch-handler it
+      .on \change, ~> @watch-handler it
+  watch-handler: (d) -> 
+    setTimeout (~> @_watch-handler d), 500
+  _watch-handler: ->
     src = if it.0 != \/ => path.join(cwd,it) else it
     src = src.replace path.join(cwd,\/), ""
     [type,cmd,dess] = [ftype(src), "",[]]
@@ -70,6 +72,10 @@ base = do
       cmd = cmd.join \;
     else => return
     if !cmd => return
+    if filecache[des] => clearTimeout filecache[des]
+    filecache[des] = setTimeout (~> @build cmd, des, dess), 200
+  build: (cmd, des, dess) ->
+    filecache[des] = null
     if dess.length => for dir in dess.map(->path.dirname it) =>
       if !fs.exists-sync dir => mkdir-recurse dir
     console.log "[BUILD] #cmd"
