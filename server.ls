@@ -11,6 +11,8 @@ backend.app.get \/global, aux.type.json, (req, res) -> res.render \global.ls, {u
 # remove after forked
 backend.app.get \/sample, (req, res) -> res.render 'sample/index.jade', {word1: "hello", context: {word2: "world"}}
 backend.app.get \/sample.js, aux.type.json, (req, res) -> res.render 'sample/index.ls', {word: "hello world"}
+# if serve static file via express 
+# backend.app.use express.static __dirname + '/static'
 
 backend.app.get \/, (req, res) -> res.render 'index.jade'
 
