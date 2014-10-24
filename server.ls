@@ -1,6 +1,6 @@
-require! {'./backend/main'.backend, './backend/main'.aux}
-require! driver: \./backend/mongodb
 require! <[LiveScript fs ./secret]>
+require! './backend/main': {backend, aux}
+require! './backend/mongodb': driver
 
 config = {debug: true, name: \servlet}
 config <<< secret
