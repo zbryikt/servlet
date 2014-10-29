@@ -2,7 +2,7 @@ require! <[fs path chokidar child_process]>
 
 RegExp.escape = -> it.replace /[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"
 
-ls   = if fs.existsSync v=\node_modules/.bin/livescript => v else \livescript
+ls   = if fs.existsSync v=\node_modules/.bin/lsc => v else \lsc
 jade = if fs.existsSync v=\node_modules/.bin/jade => v else \jade
 sass = if fs.existsSync v=\node_modules/.bin/sass => v else \sass
 cwd = path.resolve process.cwd!
