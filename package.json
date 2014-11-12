@@ -30,6 +30,7 @@
     "passport": ">=0.2.1",
     "passport-facebook": ">=1.0.3",
     "passport-local": ">=1.0.0",
-    "connect-multiparty": ">=1.2.4"
+    "connect-multiparty": ">=1.2.4",
+    "gcloud": ">=0.7.1"
   }
 }
