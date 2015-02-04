@@ -39,7 +39,7 @@ base = do
 
   session-store: -> do
     get: (sid, cb) ~> @ds.session.findOne {sid}, cb
-    set: (sid, session, cb) ~> @ds.session.update {sid}, {$set: session}, {w:1}, cb
+    set: (sid, session, cb) ~> @ds.session.update {sid}, {$set: session}, {upsert: true, w:1}, cb
     destroy: (sid, cb) ~> @ds.session.remove {sid}, {w:1}, cb
 
 module.exports = base
