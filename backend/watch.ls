@@ -63,7 +63,7 @@ base = do
 
     if type == \ls =>
       if !/src\/ls/.exec(src) => return
-      des = src.replace(\src/js, \static/js).replace /\.ls$/, ".js"
+      des = src.replace(\src/ls, \static/js).replace /\.ls$/, ".js"
       try
         fs.write-file-sync(
           des,
