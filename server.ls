@@ -1,6 +1,6 @@
 require! <[LiveScript fs ./secret]>
 require! './backend/main': {backend, aux}
-require! './backend/mongodb': driver
+require! './backend/localfs': driver
 
 config = {debug: true, name: \servlet}
 config <<< secret
@@ -9,8 +9,7 @@ backend.init config, driver, ->
 backend.app.get \/, (req, res) ->
   if !req.session.root => req.session.root = 0
   req.session.root += 1
-  console.log req.session
-  res.json {ok:1}
+  res.json {ok:req.session.root}
 
 backend.app.get \/global, aux.type.json, (req, res) -> res.render \global.ls, {user: req.user, global: true}
 
