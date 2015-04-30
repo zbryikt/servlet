@@ -45,7 +45,7 @@ backend = do
       clientSecret: \763c2bf3a2a48f4d1ae0c6fdc2795ce6
 
     cookie:
-      domain: \.g0v.photos
+      domain: \localhost
 
     mongodb:
       url: \mongodb://localhost/
