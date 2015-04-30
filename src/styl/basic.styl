@@ -1,38 +1,53 @@
-=keyframes($name)
-  @-webkit-keyframes #{$name}
-    @content
-  @-moz-keyframes #{$name}
-    @content
-  @-ms-keyframes #{$name}
-    @content
-  @keyframes #{$name}
-    @content
+keyframes(name)
+  width: 100%
+  @-webkit-keyframes {name}
+    {block}
+  @-webkit-keyframes {name}
+    {block}
+  @-moz-keyframes {name}
+    {block}
+  @-ms-keyframes {name}
+    {block}
+  @keyframes {name}
+    {block}
 
-=transition($arg1, $arg2)
-  -ms-transition: $arg1, $arg2
-  -moz-transition: $arg1, $arg2
-  -webkit-transition: $arg1, $arg2
-  -o-transition: $arg1, $arg2
-  transition: $arg1, $arg2
+transition()
+  -ms-transition arguments
+  -moz-transition arguments
+  -webkit-transition arguments
+  -o-transition arguments
+  transition arguments
 
-=transform($arg)
-  -ms-transform: $arg
-  -moz-transform: $arg
-  -webkit-transform: $arg
-  -o-transform: $arg
-  transform: $arg
+transform()
+  -ms-transform arguments
+  -moz-transform arguments
+  -webkit-transform arguments
+  -o-transform arguments
+  transform arguments
 
-=animation($arg)
-  -ms-animation: $arg
-  -moz-animation: $arg
-  -webkit-animation: $arg
-  -o-animation: $arg
-  animation: $arg
+animation()
+  -ms-animation arguments
+  -moz-animation arguments
+  -webkit-animation arguments
+  -o-animation arguments
+  animation arguments
 
-=animation-delay($arg)
-  -ms-animation-delay: $arg
-  -moz-animation-delay: $arg
-  -webkit-animation-delay: $arg
-  -o-animation-delay: $arg
-  animation-delay: $arg
+animation-delay()
+  -ms-animation-delay arguments
+  -moz-animation-delay arguments
+  -webkit-animation-delay arguments
+  -o-animation-delay arguments
+  animation-delay arguments
 
+no-selection()
+  -webkit-touch-callout: none
+  -webkit-user-select: none
+  -khtml-user-select: none
+  -moz-user-select: none
+  -ms-user-select: none
+  user-select: none
+
+ellipsis()
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
