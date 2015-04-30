@@ -1,4 +1,5 @@
-require! <[fs path chokidar child_process]>
+require! <[fs path chokidar child_process jade stylus]>
+require! 'uglify-js': uglify, LiveScript: lsc
 
 RegExp.escape = -> it.replace /[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"
 
@@ -15,13 +16,13 @@ mkdir-recurse = ->
     mkdir-recurse path.dirname it
     fs.mkdir-sync it
 
-sass-tree = do
+styl-tree = do
   down-hash: {}
   up-hash: {}
   parse: (filename) ->
     dir = path.dirname(filename)
     ret = fs.read-file-sync filename .toString!split \\n .map(-> /^ *@import (.+)/.exec it)filter(->it)map(->it.1)
-    ret = ret.map -> path.join(dir, it.replace(/(\.sass)?$/, ".sass"))
+    ret = ret.map -> path.join(dir, it.replace(/(\.styl)?$/, ".styl"))
     @down-hash[filename] = ret
     for it in ret => if not (filename in @up-hash.[][it]) => @up-hash.[][it].push filename
   find-root: (filename) ->
@@ -53,27 +54,58 @@ base = do
   watch-handler: (d) -> 
     setTimeout (~> @_watch-handler d), 500
   _watch-handler: ->
+    if !it or /node_modules|\.swp$/.exec(it)=> return
     src = if it.0 != \/ => path.join(cwd,it) else it
     src = src.replace path.join(cwd,\/), ""
-    [type,cmd,dess] = [ftype(src), "",[]]
-    if type == \ls => 
-      des = src.replace \src/ls, \static/js
-      des = des.replace /\.ls$/, ".js"
-      cmd = "#ls -cbp #src > #des"
-      dess.push des
-    else if type == \sass => 
-      sass-tree.parse src
-      srcs = sass-tree.find-root src
-      cmd = srcs.map (src) ->
-        des = src.replace \src/sass, \static/css
-        des = des.replace /\.sass/, ".css"
-        dess.push des
-        "#sass --sourcemap=none #src #des"
-      cmd = cmd.join \;
-    else => return
-    if !cmd => return
-    if filecache[des] => clearTimeout filecache[des]
-    filecache[des] = setTimeout (~> @build cmd, des, dess), 200
+    [type,cmd,des] = [ftype(src), "",""]
+
+    if type == \other => return
+
+    if type == \ls =>
+      if !/src\/ls/.exec(src) => return
+      des = src.replace(\src/js, \static/js).replace /\.ls$/, ".js"
+      try
+        fs.write-file-sync(
+          des,
+          uglify.minify(lsc.compile(fs.read-file-sync(src)toString!,{bare:true}),{fromString:true}).code
+        )
+        console.log "[BUILD] #src --> #des"
+      catch
+        console.log "[BUILD] #src failed: "
+        console.log e.message
+      return
+
+    if type == \styl =>
+      if /(basic|vars)\.styl/.exec it => return
+      try
+        styl-tree.parse src
+        srcs = styl-tree.find-root src
+      catch
+        console.log "[BUILD] #src failed: "
+        console.log e.message
+
+      console.log "[BUILD] recursive from #src:"
+      for src in srcs
+        if !/src\/styl/.exec(src) => continue
+        try
+          des = src.replace(/src\/styl/, "static/css").replace(/\.styl$/, ".css")
+          stylus fs.read-file-sync(src)toString!
+            .set \filename, src
+            .define 'index', (a,b) ->
+              return new stylus.nodes.Unit("#{(a.val or a.string)}".indexOf b.val)
+            .render (e, css) ->
+              if e =>
+                console.log "[BUILD]   #src failed: "
+                console.log "  >>>", e.name
+                console.log "  >>>", e.message
+              else =>
+                mkdir-recurse path.dirname(des)
+                fs.write-file-sync des, css
+                console.log "[BUILD]   #src --> #des"
+        catch
+          console.log "[BUILD]   #src failed: "
+          console.log e.message
+
   build: (cmd, des, dess) ->
     filecache[des] = null
     if dess.length => for dir in dess.map(->path.dirname it) =>
