@@ -37,7 +37,7 @@ styl-tree = do
 ftype = ->
   switch
   | /\.ls$/.exec it => "ls"
-  | /\.sass$/.exec it => "sass"
+  | /\.styl/.exec it => "styl"
   | /\.jade$/.exec it => "jade"
   | otherwise => "other"
 
@@ -76,7 +76,7 @@ base = do
       return
 
     if type == \styl =>
-      if /(basic|vars)\.styl/.exec it => return
+      if /(basic|vars)\.styl/.exec src => return
       try
         styl-tree.parse src
         srcs = styl-tree.find-root src
