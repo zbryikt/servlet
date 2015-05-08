@@ -1,4 +1,5 @@
 script(type="text/javascript").
+  window._backend_ = true;
   angular.module("backend",[]).provider("context", function() { 
     this.$get = function() { return !{JSON.stringify(context || {})}; };
   });
