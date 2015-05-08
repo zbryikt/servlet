@@ -11,6 +11,4 @@ else
     ..factory \global, <[]> ++ ->
       delete req.cache
       delete req._locals
-      copy = {}
-      context <<< req <<< copy
       req
