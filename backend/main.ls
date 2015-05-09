@@ -7,6 +7,7 @@ require! <[./aux ./watch]>
 lsc = (path, options, callback) ->
   opt = {} <<< options
   delete opt.settings
+  delete opt.basedir
   try
     source = fs.read-file-sync path .toString!
     source = "req = #{JSON.stringify(opt)}\n#source"
