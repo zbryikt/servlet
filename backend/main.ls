@@ -10,8 +10,8 @@ lsc = (path, options, callback) ->
   delete opt.basedir
   try
     source = fs.read-file-sync path .toString!
-    source = "req = #{JSON.stringify(opt)}\n#source"
-    [err,ret] = [null, LiveScript.compile source]
+    result = LiveScript.compile source
+    [err,ret] = [null, "+function(){var req = #{JSON.stringify(opt)};#result;}();"]
   catch e
     [err,ret] = [e,""]
   callback err, ret
@@ -35,7 +35,7 @@ backend = do
   # sample configuration
   config: -> do
     session-secret: \featureisameasurableproperty
-    url: \http://localhost/
+    url: \http://localhost:9000/
     name: \servlet
     port: \9000
     debug: true
@@ -46,7 +46,7 @@ backend = do
       clientSecret: \763c2bf3a2a48f4d1ae0c6fdc2795ce6
 
     cookie:
-      domain: \localhost
+      domain: null
 
     mongodb:
       url: \mongodb://localhost/
