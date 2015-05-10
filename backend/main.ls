@@ -11,7 +11,7 @@ lsc = (path, options, callback) ->
   try
     source = fs.read-file-sync path .toString!
     result = LiveScript.compile source
-    [err,ret] = [null, "+function(){var req = #{JSON.stringify(opt)};#result;}();"]
+    [err,ret] = [null, "(function(){var req = #{JSON.stringify(opt)};#result;}).call(this);"]
   catch e
     [err,ret] = [e,""]
   callback err, ret
