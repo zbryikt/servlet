@@ -3,12 +3,8 @@ require! 'uglify-js': uglify, LiveScript: lsc
 
 RegExp.escape = -> it.replace /[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"
 
-ls   = if fs.existsSync v=\node_modules/.bin/lsc => v else \lsc
-jade = if fs.existsSync v=\node_modules/.bin/jade => v else \jade
-sass = if fs.existsSync v=\node_modules/.bin/sass => v else \sass
 cwd = path.resolve process.cwd!
 cwd-re = new RegExp RegExp.escape "#cwd#{if cwd[* - 1]=='/' => "" else \/}"
-if process.env.OS=="Windows_NT" => [jade,sass,ls] = [jade,sass,ls]map -> it.replace /\//g,\\\
 log = (error, stdout, stderr) -> if "#{stdout}\n#{stderr}".trim! => console.log that
 
 mkdir-recurse = ->
@@ -16,23 +12,44 @@ mkdir-recurse = ->
     mkdir-recurse path.dirname it
     fs.mkdir-sync it
 
-styl-tree = do
-  down-hash: {}
-  up-hash: {}
-  parse: (filename) ->
-    dir = path.dirname(filename)
-    ret = fs.read-file-sync filename .toString!split \\n .map(-> /^ *@import (.+)/.exec it)filter(->it)map(->it.1)
-    ret = ret.map -> path.join(dir, it.replace(/(\.styl)?$/, ".styl"))
-    @down-hash[filename] = ret
-    for it in ret => if not (filename in @up-hash.[][it]) => @up-hash.[][it].push filename
-  find-root: (filename) ->
-    work = [filename]
-    ret = []
-    while work.length > 0
-      f = work.pop!
-      if @up-hash.[][f].length == 0 => ret.push f
-      else work ++= @up-hash[f]
-    ret
+src-tree = (matcher, morpher) ->
+  ret = {} <<< do
+    down-hash: {}
+    up-hash: {}
+    matcher: -> false
+    morpher: -> it
+    parse: (filename) ->
+      dir = path.dirname(filename)
+      ret = fs.read-file-sync filename .toString!split \\n .map @matcher .filter(->it)
+      if @morpher => ret = ret.map ~> path.join(dir, @morpher(it, dir))
+      else ret = ret.map -> path.join(dir, it)
+      @down-hash[filename] = ret
+      for it in ret => if not (filename in @up-hash.[][it]) => @up-hash.[][it].push filename
+    find-root: (filename) ->
+      work = [filename]
+      ret = []
+      hash = {}
+      while work.length > 0
+        f = work.pop!
+        if !hash[f] and @up-hash.[][f].length == 0 =>
+          hash[f] = 1
+          ret.push f
+        else work ++= @up-hash[f]
+      ret
+  ret <<< {matcher, morpher}
+
+jade-tree = src-tree(
+  (-> if /^ *include (.+)| *extends (.+)/.exec(it) => (that.1 or that.2) else null),
+  ((it, dir) -> 
+    if /^\//.exec it => it = path.join(('../' * dir.split(/src\/jade\//)[* - 1].split(\/).length),it)
+    it.replace(/(.jade)?$/, ".jade")
+  )
+)
+
+styl-tree = src-tree(
+  (-> if /^ *@import ('?)(.+)\1/.exec(it) => that.2 else null ),
+  (-> it.replace(/(.styl)?$/, ".styl"))
+)
 
 ftype = ->
   switch
@@ -46,7 +63,7 @@ base = do
   ignore-list: [/^(.+\/)*?\.[^/]+$/]
   ignore-func: (f) -> @ignore-list.filter(-> it.exec f.replace(cwd-re, "")replace(/^\.\/+/, ""))length
   start: ->
-    <[src src/ls src/sass static static/css static/js]>.map ->
+    <[src src/ls src/styl static static/css static/js]>.map ->
       if !fs.exists-sync it => fs.mkdir-sync it
     watcher = chokidar.watch 'src', ignored: (~> @ignore-func it), persistent: true
       .on \add, ~> @watch-handler it
@@ -60,6 +77,27 @@ base = do
     [type,cmd,des] = [ftype(src), "",""]
 
     if type == \other => return
+
+    if type == \jade =>
+      try
+        jade-tree.parse src
+        srcs = jade-tree.find-root src
+      catch
+        console.log "[BUILD] #src failed: "
+        console.log e.message
+      console.log "[BUILD] recursive from #src:"
+      for src in srcs
+        if !/src\/jade/.exec(src) => continue
+        try
+          des = src.replace(/src\/jade/, "static").replace(/\.jade/, ".html")
+          desdir = path.dirname(des)
+          if !fs.exists-sync(desdir) or !fs.stat-sync(desdir).is-directory! => mkdir-recurse desdir
+          try
+            fs.write-file-sync des, jade.render (fs.read-file-sync src .toString!),{filename: src, basedir: path.join(cwd,\src/jade/)}
+            console.log "[BUILD]   #src --> #des"
+          catch
+            console.log "[BUILD]   #src failed: "
+            console.log e.message
 
     if type == \ls =>
       if !/src\/ls/.exec(src) => return
@@ -76,14 +114,12 @@ base = do
       return
 
     if type == \styl =>
-      if /(basic|vars)\.styl/.exec src => return
       try
         styl-tree.parse src
         srcs = styl-tree.find-root src
       catch
         console.log "[BUILD] #src failed: "
         console.log e.message
-
       console.log "[BUILD] recursive from #src:"
       for src in srcs
         if !/src\/styl/.exec(src) => continue
@@ -91,7 +127,7 @@ base = do
           des = src.replace(/src\/styl/, "static/css").replace(/\.styl$/, ".css")
           stylus fs.read-file-sync(src)toString!
             .set \filename, src
-            .define 'index', (a,b) ->
+            .define 'index', (a, b) ->
               a = (a.string or a.val).split(' ')
               return new stylus.nodes.Unit(a.indexOf b.val)
             .render (e, css) ->
