@@ -103,6 +103,7 @@ base = do
       if !/src\/ls/.exec(src) => return
       des = src.replace(\src/ls, \static/js).replace /\.ls$/, ".js"
       try
+        mkdir-recurse path.dirname(des)
         fs.write-file-sync(
           des,
           uglify.minify(lsc.compile(fs.read-file-sync(src)toString!,{bare:true}),{fromString:true}).code
