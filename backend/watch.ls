@@ -1,5 +1,5 @@
 require! <[fs path chokidar child_process jade stylus]>
-require! 'uglify-js': uglify, LiveScript: lsc
+require! 'uglify-js': uglify-js, LiveScript: lsc, 'uglifycss': uglify-css
 
 RegExp.escape = -> it.replace /[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"
 
@@ -106,7 +106,7 @@ base = do
         mkdir-recurse path.dirname(des)
         fs.write-file-sync(
           des,
-          uglify.minify(lsc.compile(fs.read-file-sync(src)toString!,{bare:true}),{fromString:true}).code
+          uglify-js.minify(lsc.compile(fs.read-file-sync(src)toString!,{bare:true}),{fromString:true}).code
         )
         console.log "[BUILD] #src --> #des"
       catch
@@ -138,6 +138,7 @@ base = do
                 console.log "  >>>", e.message
               else =>
                 mkdir-recurse path.dirname(des)
+                css = uglify-css.processString css, uglyComments: true
                 fs.write-file-sync des, css
                 console.log "[BUILD]   #src --> #des"
         catch
