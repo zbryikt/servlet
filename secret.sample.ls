@@ -6,3 +6,14 @@ module.exports = do
   gcs:
     projectId: 'dummy project id'
     keyFilename: '/path/to/your/key/json'
+
+  watch: true
+  driver: \localfs
+  url: \http://localhost/
+
+  cookie:
+    domain: \localhost
+
+  test:
+    session: false
+

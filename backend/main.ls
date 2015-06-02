@@ -35,7 +35,7 @@ backend = do
   # sample configuration
   config: -> do
     session-secret: \featureisameasurableproperty
-    url: \http://localhost:9000/
+    url: \http://localhost/
     name: \servlet
     port: \9000
     debug: true
@@ -52,8 +52,8 @@ backend = do
       url: \mongodb://localhost/
 
     gcs: do
-      projectId: \keen-optics-617
-      keyFilename: \/Users/tkirby/.ssh/google/g0vphotos/key.json
+      projectId: 'dummy project id'
+      keyFilename: '/path/to/your/key/json'
 
     mail: do
       host: \box590.bluehost.com
@@ -61,7 +61,7 @@ backend = do
       secure: true
       maxConnections: 5
       maxMessages: 10
-      auth: {user: 'noreply@g0v.photos', pass: ''}
+      auth: {user: 'noreply@dummy', pass: ''}
 
   newUser: (username, password, usepasswd, detail) ->
     displayname = if detail => detail.displayName or detail.username else username.replace(/@.+$/, "")
@@ -168,7 +168,7 @@ backend = do
     <~ @dd.init @config
     @ <<< it
     if !@config.debug => @app.use (err, req, res, next) -> if err => res.status 500 .render '500' else next!
-    watch.start!
+    if @config.watch => watch.start!
     server = @app.listen @config.port, -> console.log "listening on port #{server.address!port}"
     cb @
 

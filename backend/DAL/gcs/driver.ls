@@ -1,5 +1,7 @@
 require! <[fs gcloud]>
+localfs = require '../localfs/driver'
 datastore = gcloud.datastore
+
 
 aux = do
   clean: (obj) ->
@@ -15,6 +17,7 @@ base = do
   aux: aux
 
   init: ({gcs: c}, cb) ->
+    localfs.init {}, ->
     if c.keyFilename and !fs.exists-sync(c.keyFilename) => delete c.keyFilename
     ds = @ds = new datastore.dataset c
     cb {ds}
@@ -27,7 +30,7 @@ base = do
       if e => return callback {all: "failed to create user"}, false
     else
       user = t.0.data
-      if (usepasswd or user.usepasswd) and user.password != p => return callback null, false
+      if (usepasswd or user.usepasswd) and user.password != password => return callback null, false
     delete user.password
     (e,t,n) <~ @ds.runQuery (@ds.createQuery <[fav]> .filter "username =", username), _
     if e => return done null, false
@@ -36,7 +39,7 @@ base = do
     t.map -> user.fav[it.data.pic] = true
     return callback null, user
 
-  session-store: -> do
+  session-store-remote: -> do
     get: (sid, cb) ~>
       (e,t,n) <- @ds.runQuery (@ds.createQuery <[session]> .filter "__key__ =", @ds.key([\session, sid])), _
       if !e and t and t.length => session = JSON.parse(new Buffer(t.0.data.session, \base64).toString \utf8)
@@ -47,5 +50,10 @@ base = do
       @ds.save {key: @ds.key([\session, sid]), data: {session}}, (e,k) -> if cb => cb e
     destroy: (sid, cb) ~>
       @ds.delete @ds.key([\session, sid]), (e) -> if cb => cb e
+
+  session-store-local: -> do
+    localfs.session-store!
+
+base.session-store = base.session-store-local
 
 module.exports = base

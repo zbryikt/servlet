@@ -10,21 +10,30 @@ base = do
   ds: null
   aux: {}
 
-  init: ({mongodb: config, name: name}, cb) ->
+  init: (config, cb) ->
     @root = path.join process.cwd!, ".localfsdb"
     if !fs.exists-sync @root => fs.mkdir-sync @root
     if !fs.lstat-sync(@root).isDirectory! => throw new Error "#{@root} should be a directory."
     @db = db = do
-      get-name: (name, type=null) ~> path.join(@root, (type or ''), (new Buffer(name).toString(\base64).replace(/\//g, "-")))
+      full-key: (key, type=null) ~> path.join(@root, (type or ''), (new Buffer(key).toString(\base64).replace(/\//g, "-")))
       get-dir: (type=null) ~> path.join(@root, type or '')
-      exists: (name, type=null) -> return fs.exists-sync(@get-name(name,type))
-      delete: (name, type=null) -> if fs.exists-sync(@get-name(name,type)) => fs.unlink-sync @get-name(name,type)
-      read: (name, type=null) ->
-        if !fs.exists-sync(@get-name(name,type)) => return null
-        JSON.parse(fs.read-file-sync @get-name(name,type))
-      write: (name, data, type=null) ->
+      exists: (key, type=null) -> return fs.exists-sync(@full-key(key,type))
+      delete: (key, type=null) -> if fs.exists-sync(@full-key(key,type)) => fs.unlink-sync @full-key(key,type)
+      create-key: (prefix) -> 
+        while 1 =>
+          candidate = parseInt(Math.random!*4000000000).toString(36)
+          if !@exists(prefix,candidate) => break
+        @write candidate, {}, prefix
+        return candidate
+      read: (key, type=null) ->
+        if !key => return null
+        if !fs.exists-sync(@full-key(key,type)) => return null
+        JSON.parse(fs.read-file-sync @full-key(key,type))
+      write: (key, data, type=null) ->
+        if !key => data.key = key = @create-key type
         if !fs.exists-sync(@get-dir(type)) => mkdir-recurse(@get-dir(type))
-        fs.write-file-sync(@get-name(name,type), JSON.stringify(data))
+        fs.write-file-sync(@full-key(key,type), JSON.stringify(data))
+        data
       query: (criteria, type=null) ->
         dir = @get-dir(type)
         if !fs.exists-sync(dir) or !fs.stat-sync(dir)is-directory! => return []
@@ -36,7 +45,6 @@ base = do
           catch
         ret = ret.filter(->it).filter(criteria)
         return ret
-      clear: (name,type=null) -> if fs.exists-sync(@get-name(name,type)) => fs.unlink-sync(@get-name(name,type))
     cb {db}
 
   get-user: (username, password, usepasswd, detail, newuser, callback) ->
@@ -53,8 +61,9 @@ base = do
     get: (sid, cb) ~>
       ret = @db.read sid, \session
       cb null, ret
-      #cb (if !ret => "not exists" else null), ret
-    set: (sid, session, cb) ~> cb @db.write(sid, session, \session)
-    destroy: (sid, cb) ~> cb @db.clear sid, \session
+    set: (sid, session, cb) ~> 
+      @db.write(sid, session, \session)
+      cb!
+    destroy: (sid, cb) ~> cb @db.delete sid, \session
 
 module.exports = base
