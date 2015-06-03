@@ -27,7 +27,7 @@
     "crypto": ">=0.0.3",
     "express": ">=4.8.7",
     "express-session": ">=1.7.6",
-    "mongodb": ">=1.4.9",
+    "mongodb": "=2.0.33",
     "nodemailer": ">=1.2.1",
     "nodemailer-smtp-transport": ">=0.1.12",
     "passport": ">=0.2.1",

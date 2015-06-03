@@ -32,10 +32,10 @@ base = do
     (e,user) <~ @ds.user.findOne {username: username}
     if !user =>
       user = newuser username, password, usepasswd, detail
-      (e,r) <~ @ds.user.insert user, {w: 1}
-      if e or !r or !r.0 => return callback {server: "failed to create user"}, false
-      user.key = r.0._id
-      (e,c,s) <~ @ds.user.update {_id: OID r.0._id}, {$set: {key: OID r.0._id}}, {w: 1}
+      (e,r) <~ @ds.user.insertOne user, {w: 1}
+      if e or !r or !r.insertedCount => return callback {server: "failed to create user"}, false
+      user.key = r.insertedId
+      (e,c,s) <~ @ds.user.update {_id: OID user.key}, {$set: {key: OID user.key}}, {w: 1}
       if e => return callback {server: "failed to create user"}, false
       delete user.password
       return callback null, user

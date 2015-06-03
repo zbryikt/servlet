@@ -16,15 +16,19 @@ main = (driver) ->
       catch => res null
     write: (prefix, key, data) -> new bluebird (res, rej) -> get-collection prefix, (root) ->
       if key => 
+        delete data.key
+        delete data._id
         (e,r,b) <- root.update {_id: OID key},  {$set: data}, {upsert: true, w:1}
-        return res b
+        if e or !r => return rej!
+        return res data
       else 
         if data._id => delete data._id
-        (e,b) <- root.insert data, {w:1}
-        b = b.0
-        b.key = b._id
-        (e,r,c) <- root.update {_id: OID b._id}, {$set: {key: OID b._id}}, {w: 1}
-        return res b
+        (e,r) <- root.insertOne data, {w:1}
+        if e or !r or !r.insertedCount => return rej!
+        data.key = r.insertedId
+        (e,r,c) <- root.update {_id: OID data.key}, {$set: {key: OID data.key}}, {w: 1}
+        if e or !r => return rej!
+        return res data
 
     delete: (prefix, key) -> new bluebird (res, rej) ->  get-collection prefix, (root) ->
       root.remove {_id: OID key} -> res!
@@ -32,7 +36,9 @@ main = (driver) ->
     list: (prefix, field, values) -> new bluebird (res, rej) -> get-collection prefix, (root) ->
       query = {}
       if typeof(values) == typeof([]) and values.length =>
-        if field == 'key' => values := values.map(->OID it)
+        try
+          if field == 'key' => values := values.map(->OID it)
+        catch e => console.log "mongodb store.list failed: ", e.toString!
         query[field] = { $in: values }
       else query[field] = values
       cursor = root.find(query).toArray (e,b) -> res b
