@@ -1,3 +1,4 @@
+require! <[bluebird]>
 # usage
 # MyType = new model({
 #   self: { constraint applied to object itself }
@@ -68,9 +69,12 @@ model = ((config)->
     obj = if @config.create => that obj else obj
     return @clean obj
 
-  expand: (obj) -> 
+  # TODO: this should be asynchronous
+  expand: (obj) ->
     if @config.expand => obj = that obj
-    for k,v of @config.{}base => if obj[k] => obj[k] = v.type.expand obj[k]
+    queue = []
+    for k,v of @config.{}base =>
+      if v.type and obj[k] => obj[k] = v.type.expand obj[k]
     obj
 
   shrink: (obj) ->
@@ -79,6 +83,9 @@ model = ((config)->
     obj
 
 model.type = {} <<< do
+  boolean: new model do
+    lint: -> [!(!it or (typeof(it) == typeof(true)))]
+
   string: new model do
     lint: -> [!(typeof(it) == typeof("") or typeof(it) == typeof(1))]
     range: ({min,max}, value) -> 
@@ -87,8 +94,16 @@ model.type = {} <<< do
       if length > max => return [true,null,\max]
       return [false]
 
+  email: new model do
+    link: -> [!(it and typeof(it)==typeof("") and /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]+/.exec(it))]
+
   number: new model do
     lint: -> [!(typeof(it) == typeof(0))]
+
+  date: new model do
+    lint: ->
+      if typeof(it) == typeof("") and !isNaN(new Date(it)) and it.length < 50 => return [false]
+      return [isNaN(it)]
 
   array: (m) -> new model do
     lint: (obj) -> 
@@ -100,7 +115,7 @@ model.type = {} <<< do
   keys: (m) -> new model do
     lint: (obj) -> 
       if typeof(obj) != typeof([]) or isNaN(parseInt(obj.length)) => return [true]
-      ret = (for idx from 0 til obj.length => [idx, obj[idx]]).filter(-> it.1)[0]
+      ret = (for idx from 0 til obj.length => [idx, obj[idx]]).filter(->!it.1)[0]
       if !ret => return [false]
       return [true, ret.0, ret.1]
     expand: (obj) -> for idx from 0 til obj.length => obj[idx] = m.type.expand obj[idx]
@@ -108,5 +123,15 @@ model.type = {} <<< do
 
   id: new model do
     lint: -> [false]
+
+model.type.user = new model do
+  name: \user
+  base: do
+    username: {required: true, type: model.type.email}
+    password: {type: model.type.string}
+    usepasswd: {type: model.type.boolean}
+    displayname: {max: 30, min: 3, required: true, type: model.type.string}
+    detail: {max: 1000, type: model.type.string}
+    create_date: {type: model.type.date}
 
 module.exports = model

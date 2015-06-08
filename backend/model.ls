@@ -11,9 +11,11 @@ store = null
 model.driver = do
   instance: null
   drivers: {}
-  init: (name) -> if !@drivers[name]? => @drivers[name] = new DAL name
+  init: (name, config={}) -> if !@drivers[name]? => @drivers[name] = new DAL name, config
+  _config: {}
+  config: (config) -> @_config = config
   use: (name) ->
-    @init name
+    @init name, @_config
     @instance = store := @drivers[name]
 
 model.prototype.interface = do
@@ -24,8 +26,9 @@ model.prototype <<< do
   read: (key) -> store.read @name, key
   write: (key, data) -> store.write @name, key, data
   list: (key, values) -> store.list @name, key, values
+  delete: (key) -> store.delete @name, key
 
-model.prototype.rest = (api) ->
+model.prototype.rest = (api, config) ->
   api.post "/#{@name}/", (req, res) ~>
     data = req.body
     if @lint(req.body).0 => return aux.r400 res
@@ -36,7 +39,7 @@ model.prototype.rest = (api) ->
       ..then (ret) ->
         if !ret => return aux.r404 res
         return res.json ret
-      ..failed -> return aux.r403 res
+      ..catch -> return aux.r403 res
   api.put "/#{@name}/:id", (req, res) ~>
     data = req.body
     if @lint(req.body).0 => return aux.r400 res
@@ -46,6 +49,6 @@ model.prototype.rest = (api) ->
     @read req.params.id
       ..then (ret) -> 
         if !ret => return aux.r404 res
-      ..failed -> return aux.r403 res
+      ..catch -> return aux.r403 res
 
 module.exports = model
