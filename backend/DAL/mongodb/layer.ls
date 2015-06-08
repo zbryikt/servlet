@@ -20,6 +20,7 @@ main = (driver) ->
         delete data._id
         (e,r,b) <- root.update {_id: OID key},  {$set: data}, {upsert: true, w:1}
         if e or !r => return rej!
+        data <<< {key, _id: key}
         return res data
       else 
         if data._id => delete data._id
