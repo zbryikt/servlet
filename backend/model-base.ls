@@ -69,13 +69,15 @@ model = ((config)->
     obj = if @config.create => that obj else obj
     return @clean obj
 
-  # TODO: this should be asynchronous
-  expand: (obj) ->
-    if @config.expand => obj = that obj
-    queue = []
-    for k,v of @config.{}base =>
-      if v.type and obj[k] => obj[k] = v.type.expand obj[k]
-    obj
+  expand: (obj) -> new bluebird (res, rej) ~>
+    (obj) <~ (if @config.expand => that obj else new bluebird (res,rej) -> res obj).then
+    if !obj => promises = []
+    else promises = [[k,v] for k,v of @config.{}base].filter(-> it.1.type and obj[it.0]).map(->
+      ret = it.1.type.expand(obj[it.0])
+      ret.then (ret) -> obj[it.0] = ret
+    )
+    if promises.length => bluebird.all promises .then -> res obj
+    else res obj
 
   shrink: (obj) ->
     if @config.shrink => obj = that obj
@@ -112,26 +114,25 @@ model.type = {} <<< do
       if !ret => return [false]
       return [true, ret.0, ret.1]
 
+  key: (m) -> new model do
+    lint: (obj) ->
+      if typeof(obj) == typeof({}) or typeof(obj) == typeof("") => return [false]
+      return [true,null,\type]
+    expand: (obj) -> if typeof(obj) == typeof("") => m.type.expand obj
   keys: (m) -> new model do
     lint: (obj) -> 
       if typeof(obj) != typeof([]) or isNaN(parseInt(obj.length)) => return [true]
       ret = (for idx from 0 til obj.length => [idx, obj[idx]]).filter(->!it.1)[0]
       if !ret => return [false]
       return [true, ret.0, ret.1]
-    expand: (obj) -> for idx from 0 til obj.length => obj[idx] = m.type.expand obj[idx]
+    expand: (obj) -> 
+      promises = [ [idx,m.type.expand(obj[idx])] for idx from 0 til obj.length ].map(->
+        it.1.then (ret) -> obj[it.0] = ret
+      )
+      new bluebird (res, rej) -> bluebird.all promises .then -> res obj
     shrink: (obj) -> for idx from 0 til obj.length => obj[idx] = m.type.shrink obj[idx]
 
   id: new model do
     lint: -> [false]
-
-model.type.user = new model do
-  name: \user
-  base: do
-    username: {required: true, type: model.type.email}
-    password: {type: model.type.string}
-    usepasswd: {type: model.type.boolean}
-    displayname: {max: 30, min: 3, required: true, type: model.type.string}
-    detail: {max: 1000, type: model.type.string}
-    create_date: {type: model.type.date}
 
 module.exports = model
