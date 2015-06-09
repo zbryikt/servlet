@@ -32,7 +32,7 @@ main = (driver) ->
         return res data
 
     delete: (prefix, key) -> new bluebird (res, rej) ->  get-collection prefix, (root) ->
-      root.remove {_id: OID key} -> res!
+      root.deleteOne {_id: OID key}, {w:1} (e) -> res if e => true else false
 
     list: (prefix, field, values) -> new bluebird (res, rej) -> get-collection prefix, (root) ->
       query = {}
