@@ -91,11 +91,12 @@ base = do
         console.log "[BUILD] #src failed: "
         console.log e.message
       console.log "[BUILD] recursive from #src:"
+      _src = src
       for src in srcs
         if !/src\/jade/.exec(src) => continue
         try
           des = src.replace(/src\/jade/, "static").replace(/\.jade/, ".html")
-          if newer(des, src) => continue
+          if newer(des, _src) => continue
           desdir = path.dirname(des)
           if !fs.exists-sync(desdir) or !fs.stat-sync(desdir).is-directory! => mkdir-recurse desdir
           try
@@ -129,11 +130,12 @@ base = do
         console.log "[BUILD] #src failed: "
         console.log e.message
       console.log "[BUILD] recursive from #src:"
+      _src = src
       for src in srcs
         if !/src\/styl/.exec(src) => continue
         try
           des = src.replace(/src\/styl/, "static/css").replace(/\.styl$/, ".css")
-          if newer(des, src) => continue
+          if newer(des, _src) => continue
           stylus fs.read-file-sync(src)toString!
             .set \filename, src
             .define 'index', (a, b) ->
