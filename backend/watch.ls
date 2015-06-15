@@ -7,6 +7,11 @@ cwd = path.resolve process.cwd!
 cwd-re = new RegExp RegExp.escape "#cwd#{if cwd[* - 1]=='/' => "" else \/}"
 log = (error, stdout, stderr) -> if "#{stdout}\n#{stderr}".trim! => console.log that
 
+newer = (f1, f2) ->
+  if !fs.exists-sync(f1) => return true
+  if !fs.exists-sync(f2) => return false
+  (fs.stat-sync(f1).mtime - fs.stat-sync(f2).mtime) > 0
+
 mkdir-recurse = ->
   if !fs.exists-sync(it) => 
     mkdir-recurse path.dirname it
@@ -90,6 +95,7 @@ base = do
         if !/src\/jade/.exec(src) => continue
         try
           des = src.replace(/src\/jade/, "static").replace(/\.jade/, ".html")
+          if newer(des, src) => continue
           desdir = path.dirname(des)
           if !fs.exists-sync(desdir) or !fs.stat-sync(desdir).is-directory! => mkdir-recurse desdir
           try
@@ -102,6 +108,7 @@ base = do
     if type == \ls =>
       if !/src\/ls/.exec(src) => return
       des = src.replace(\src/ls, \static/js).replace /\.ls$/, ".js"
+      if newer(des, src) => continue
       try
         mkdir-recurse path.dirname(des)
         fs.write-file-sync(
@@ -126,6 +133,7 @@ base = do
         if !/src\/styl/.exec(src) => continue
         try
           des = src.replace(/src\/styl/, "static/css").replace(/\.styl$/, ".css")
+          if newer(des, src) => continue
           stylus fs.read-file-sync(src)toString!
             .set \filename, src
             .define 'index', (a, b) ->
