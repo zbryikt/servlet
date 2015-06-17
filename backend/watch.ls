@@ -8,8 +8,8 @@ cwd-re = new RegExp RegExp.escape "#cwd#{if cwd[* - 1]=='/' => "" else \/}"
 log = (error, stdout, stderr) -> if "#{stdout}\n#{stderr}".trim! => console.log that
 
 newer = (f1, f2) ->
-  if !fs.exists-sync(f1) => return true
-  if !fs.exists-sync(f2) => return false
+  if !fs.exists-sync(f1) => return false
+  if !fs.exists-sync(f2) => return true
   (fs.stat-sync(f1).mtime - fs.stat-sync(f2).mtime) > 0
 
 mkdir-recurse = ->
