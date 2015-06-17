@@ -109,7 +109,7 @@ base = do
     if type == \ls =>
       if !/src\/ls/.exec(src) => return
       des = src.replace(\src/ls, \static/js).replace /\.ls$/, ".js"
-      if newer(des, src) => continue
+      if newer(des, src) => return
       try
         mkdir-recurse path.dirname(des)
         fs.write-file-sync(
