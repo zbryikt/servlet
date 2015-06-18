@@ -33,35 +33,7 @@ backend = do
   update-user: (req) -> req.logIn req.user, ->
 
   # sample configuration
-  config: -> do
-    session-secret: \featureisameasurableproperty
-    url: \http://localhost/
-    name: \servlet
-    port: \9000
-    debug: true
-    limit: '20mb'
-
-    facebook:
-      clientID: \252332158147402
-      clientSecret: \763c2bf3a2a48f4d1ae0c6fdc2795ce6
-
-    cookie:
-      domain: null
-
-    mongodb:
-      url: \mongodb://localhost/
-
-    gcs: do
-      projectId: 'dummy project id'
-      keyFilename: '/path/to/your/key/json'
-
-    mail: do
-      host: \box590.bluehost.com
-      port: 465
-      secure: true
-      maxConnections: 5
-      maxMessages: 10
-      auth: {user: 'noreply@dummy', pass: ''}
+  config: -> {}
 
   newUser: (username, password, usepasswd, detail) ->
     displayname = if detail => detail.displayName or detail.username else username.replace(/@.+$/, "")
