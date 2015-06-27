@@ -48,12 +48,14 @@ base = do
     cb {db}
 
   get-user: (username, password, usepasswd, detail, newuser, callback) ->
-    user = @db.read "#username", \user
+    user = @db.query (-> it.username == username ), \user .0
     if !user =>
       user = newuser username, password, usepasswd, detail
-      @db.write "#username", user, \user
+      @db.write null, user, \user
+      @db.write user.key, user, \user
     else
-      if (usepasswd or user.usepasswd) and user.password != password => return callback null, false
+      if (usepasswd or user.usepasswd) and user.password != password => 
+        return callback null, false, {message: if user.usepasswd => "incorrect email or password" else "did you login with facebook?"}
     delete user.password
     return callback null, user
 

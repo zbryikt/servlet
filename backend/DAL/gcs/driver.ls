@@ -26,14 +26,20 @@ base = do
     (e,t,n) <~ @ds.runQuery (@ds.createQuery <[user]> .filter "username =", username), _
     if !t.length =>
       user = @aux.clean newuser username, password, usepasswd, detail
-      (e,k) <~ @ds.save { key: @ds.key([\user, null]), data: user}, _
-      if e => return callback {all: "failed to create user"}, false
+      key = @ds.key([\user, null])
+      (e,k) <~ @ds.save {key, data: user}
+      if e => return callback e, false, {message: "failed to create user"}
+      user.key = key.1
+      delete user.password
+      (e,k) <~ @ds.save {key, data: user}
+      if e => return callback e, false, {message: "failed to create user"}
     else
       user = t.0.data
-      if (usepasswd or user.usepasswd) and user.password != password => return callback null, false
+      if (usepasswd or user.usepasswd) and user.password != password => 
+        return callback null, false, {message: if user.usepasswd => "incorrect email or password" else "did you login with facebook?"}
     delete user.password
     (e,t,n) <~ @ds.runQuery (@ds.createQuery <[fav]> .filter "username =", username), _
-    if e => return done null, false
+    if e => return done e, false, {message: "failed in querying user data"}
     user.fav = {}
     # TODO handle next / pagination if necessaary
     t.map -> user.fav[it.data.pic] = true
