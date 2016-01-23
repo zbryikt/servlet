@@ -1,5 +1,5 @@
 db
-node_modules/
+node_modules
 .*
 secret.ls
 !.gitignore

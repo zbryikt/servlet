@@ -34,7 +34,7 @@
     "passport-facebook": ">=1.0.3",
     "passport-local": ">=1.0.0",
     "connect-multiparty": ">=1.2.4",
-    "gcloud": ">=0.7.1",
+    "gcloud": "=0.27.0",
     "bluebird": "=2.9.25"
   }
 }
