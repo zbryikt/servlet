@@ -4,7 +4,7 @@ module.exports = do
   watch: false
 
   facebook:
-    clientSecret: \6753e6922de2c21538ca2b6a26bf09af
+    clientSecret: \00000000000000000000000000000000
 
   cookie:
     domain: null
