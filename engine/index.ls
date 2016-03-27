@@ -1,71 +1,47 @@
-require! <[fs path child_process express mongodb body-parser crypto chokidar]>
-require! <[passport passport-local passport-facebook express-session]>
-require! <[nodemailer nodemailer-smtp-transport LiveScript]>
-require! <[connect-multiparty]>
+require! <[fs path bluebird crypto LiveScript]>
+require! <[express body-parser express-session connect-multiparty]>
+require! <[passport passport-local passport-facebook]>
+require! <[nodemailer nodemailer-smtp-transport]>
 require! <[./aux ./watch]>
 
-lsc = (path, options, callback) ->
-  opt = {} <<< options
-  delete opt.settings
-  delete opt.basedir
-  try
-    source = fs.read-file-sync path .toString!
-    result = LiveScript.compile source
-    [err,ret] = [null, "(function(){var req = #{JSON.stringify(opt)};#result;}).call(this);"]
-  catch e
-    [err,ret] = [e,""]
-  callback err, ret
 
 backend = do
-  # data driver. initialized in init, determined by config
-  dd: null
-
-  # wrapper or http request handler for checking if is logined as staff 
-  authorized: (cb) -> (req, res) ->
-    if not (req.user and req.user.isStaff) => return res.status(403).render('403', {url: req.originalUrl})
-    cb req, res
-
-  # need login
-  needlogin: (cb) -> (req, res) ->
-    if not (req.user) => return res.status(403).render('403', {url: req.originalUrl})
-    cb req, res
-
   update-user: (req) -> req.logIn req.user, ->
-
-  # sample configuration
-  config: -> {}
-
-  newUser: (username, password, usepasswd, detail) ->
-    displayname = if detail => detail.displayName or detail.username else username.replace(/@.+$/, "")
-    user = {username, password, usepasswd, displayname, detail, create_date: new Date!}
-
-  getUser: (username, password, usepasswd, detail, done) ->
-    password = if usepasswd => crypto.createHash(\md5).update(password).digest(\hex) else ""
-    @dd.get-user username, password, usepasswd, detail, @newUser, done
-
-  session-store: (backend) -> @ <<< backend.dd.session-store!
-
-  init: (config, driver, cb) ->
-    config = {} <<< @config! <<< config
-    @dd = driver
-    aux <<< driver.aux
-
-    @session-store.prototype = express-session.Store.prototype
-
+  #session-store: (backend) -> @ <<< backend.dd.session-store!
+  init: (config, authio) -> new Promise (res, rej) ~>
+    @config = config
+    session-store = -> @ <<< authio.session
+    session-store.prototype = express-session.Store.prototype
     app = express!
     app.use body-parser.json limit: config.limit
     app.use body-parser.urlencoded extended: true, limit: config.limit
-    cb app
     app.set 'view engine', 'jade'
-    app.engine \ls, lsc
+    app.engine \ls, (path, options, callback) ->
+      opt = {} <<< options
+      delete opt.settings
+      delete opt.basedir
+      try
+        source = fs.read-file-sync path .toString!
+        result = LiveScript.compile source
+        [err,ret] = [null, "(function(){var req = #{JSON.stringify(opt)};#result;}).call(this);"]
+      catch e
+        [err,ret] = [e,""]
+      callback err, ret
     app.use \/, express.static(path.join(__dirname, '../static'))
     app.set 'views', path.join(__dirname, '../view')
     app.locals.basedir = app.get \views
 
+    get-user = (u, p, usep, detail, done) ->
+      authio.user.get u, p, usep, detail
+        .then -> done null, false, it
+        .catch -> 
+          msg = if user.usepassword => "incorrect email or password" else "did you login with facebook?"
+          done null, false, {message: msg}
+
     passport.use new passport-local.Strategy {
       usernameField: \email
       passwordField: \passwd
-    },(u,p,done) ~> @getUser u, p, true, null, done
+    },(u,p,done) ~> get-user u, p, true, null, done
 
     passport.use new passport-facebook.Strategy(
       do
@@ -74,14 +50,14 @@ backend = do
         callbackURL: "/u/auth/facebook/callback"
         profileFields: ['id', 'displayName', 'link', 'emails']
       , (access-token, refresh-token, profile, done) ~>
-        @getUser profile.emails.0.value, null, false, profile, done
+        get-user profile.emails.0.value, null, false, profile, done
     )
 
     app.use express-session do
-      secret: config.session-secret
+      secret: config.session.secret
       resave: true
       saveUninitialized: true
-      store: new @session-store @
+      store: new session-store!
       cookie: do
         #secure: true # TODO: https. also need to dinstinguish production/staging
         path: \/
@@ -135,13 +111,13 @@ backend = do
         @clean req, res, next
 
     @ <<< {config, app, express, router, postman, multi}
+    res!
 
   start: (cb) ->
-    <~ @dd.init @config
-    @ <<< it
-    if !@config.debug => @app.use (err, req, res, next) -> if err => res.status 500 .render '500' else next!
+    if !@config.debug => 
+      (err, req, res, next) <- @app.use
+      -> if err => res.status 500 .render '500' else next!
     if @config.watch => watch.start!
     server = @app.listen @config.port, -> console.log "listening on port #{server.address!port}"
-    cb @
 
-module.exports = {backend, aux}
+module.exports = backend
