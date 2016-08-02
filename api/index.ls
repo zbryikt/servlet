@@ -1,4 +1,4 @@
 require! <[fs path]>
 require! <[./sample]>
-module.exports = (engine) ->
-  sample engine
+module.exports = (engine, io) ->
+  sample engine, io

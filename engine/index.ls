@@ -1,18 +1,48 @@
-require! <[fs path bluebird crypto LiveScript]>
+require! <[fs fs-extra path bluebird crypto LiveScript chokidar moment]>
 require! <[express body-parser express-session connect-multiparty]>
 require! <[passport passport-local passport-facebook passport-google-oauth2]>
 require! <[nodemailer nodemailer-smtp-transport]>
 require! <[./aux ./watch]>
+require! 'uglify-js': uglify-js, LiveScript: lsc
+colors = require \colors/safe
 
 
 backend = do
   update-user: (req) -> req.logIn req.user, ->
   #session-store: (backend) -> @ <<< backend.dd.session-store!
-  init: (config, authio) -> new Promise (res, rej) ~>
+  init: (config, authio) -> new bluebird (res, rej) ~>
     @config = config
     session-store = -> @ <<< authio.session
     session-store.prototype = express-session.Store.prototype
     app = express!
+    app.use (req, res, next) ->
+      res.setHeader \Content-Security-Policy, [
+        <[default-src
+          'self' blob:
+        ]>
+        <[script-src
+          'self' http://connect.facebook.net/en_US/sdk.js
+          https://www.google-analytics.com 'unsafe-inline' 'unsafe-eval'
+        ]>
+        <[style-src
+          'self' https://www.google-analytics.com 'unsafe-inline'
+          http://fonts.googleapis.com
+        ]>
+        <[img-src
+          'self' data: blob: https://www.google-analytics.com https://www.facebook.com/
+        ]>
+        <[font-src
+          'self' http://fonts.gstatic.com
+        ]>
+        <[frame-src
+          'self' data: blob: http://staticxx.facebook.com/ https://www.facebook.com/
+        ]>
+        <[connect-src
+          'self' data: blob:
+        ]>
+      ].map(-> it.join(" ")).join("; ")
+      next!
+
     app.use body-parser.json limit: config.limit
     app.use body-parser.urlencoded extended: true, limit: config.limit
     app.set 'view engine', 'jade'
@@ -28,15 +58,18 @@ backend = do
         [err,ret] = [e,""]
       callback err, ret
     app.use \/, express.static(path.join(__dirname, '../static'))
-    app.set 'views', path.join(__dirname, '../view')
+    app.set 'views', path.join(__dirname, '../src/jade/')
     app.locals.basedir = app.get \views
 
     get-user = (u, p, usep, detail, done) ->
       authio.user.get u, p, usep, detail
-        .then -> done null, it
+        .then ->
+          done null, it
+          return null
         .catch -> 
           msg = if usep => "incorrect email or password" else "did you login with social account?"
           done null, false, {message: msg}
+          return null
 
     passport.use new passport-local.Strategy {
       usernameField: \email
@@ -51,7 +84,11 @@ backend = do
         passReqToCallback: true
         profileFields: ['id', 'displayName', 'link', 'emails']
       , (request, access-token, refresh-token, profile, done) ~>
-        @getUser profile.emails.0.value, null, false, profile, done
+        if !profile.emails =>
+          done null, false, do
+            message: "We can't get email address from your Google account. Please try signing up with email."
+          return null
+        get-user profile.emails.0.value, null, false, profile, done
     )
 
     passport.use new passport-facebook.Strategy(
@@ -61,6 +98,10 @@ backend = do
         callbackURL: "/u/auth/facebook/callback"
         profileFields: ['id', 'displayName', 'link', 'emails']
       , (access-token, refresh-token, profile, done) ~>
+        if !profile.emails =>
+          done null, false, do
+            message: "We can't get email address from your Facebook account. Please try signing up with email."
+          return null
         get-user profile.emails.0.value, null, false, profile, done
     )
 
@@ -109,11 +150,11 @@ backend = do
       ..get \/auth/google, passport.authenticate \google, {scope: ['email']}
       ..get \/auth/google/callback, passport.authenticate \google, do
         successRedirect: \/
-        failureRedirect: \/u/403
+        failureRedirect: \/auth/google-fail.html
       ..get \/auth/facebook, passport.authenticate \facebook, {scope: ['email']}
       ..get \/auth/facebook/callback, passport.authenticate \facebook, do
         successRedirect: \/
-        failureRedirect: \/u/403
+        failureRedirect: \/auth/fb-fail.html
 
     postman = nodemailer.createTransport nodemailer-smtp-transport config.mail
 
@@ -127,12 +168,33 @@ backend = do
 
     @ <<< {config, app, express, router, postman, multi}
     res!
+  watch: ->
+    build = ~>
+      console.log "[BUILD] Config 'engine/config/#{@config.config}.ls -> 'static/js/share/config.js'"
+      ret = lsc.compile(
+        fs.read-file-sync("engine/config/#{@config.config}.ls").toString!,
+        {bare: true}
+      )
+      if !@config.debug => ret = uglify-js.minify(ret,{fromString:true}).code
+      fs-extra.mkdirs 'static/js/share'
+      fs.write-file-sync 'static/js/share/config.js', ret
+    chokidar.watch "engine/config/#{@config.config}.ls", ignored: (~>), persistent: true
+      .on \add, ~> build!
+      .on \change, ~> build!
 
   start: (cb) ->
-    if !@config.debug => 
+    @watch!
+    if !@config.debug =>
       (err, req, res, next) <- @app.use
-      -> if err => res.status 500 .render '500' else next!
-    if @config.watch => watch.start!
+      if err =>
+        console.error(
+          colors.red.underline("[#{moment!format 'YY/MM/DD HH:mm:ss'}]"),
+          colors.yellow(err.path)
+        )
+        console.error colors.grey(err.stack)
+        res.status 500 .render '500'
+      else next!
+    if @config.watch => watch.start @config
     server = @app.listen @config.port, -> console.log "listening on port #{server.address!port}"
 
 module.exports = backend

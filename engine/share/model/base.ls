@@ -138,6 +138,9 @@ model.type = {} <<< do
     name: \id
     lint: -> [false]
 
+  json: new model do
+    name: \json
+
 # complex type
 model.type <<< do
   # {switch: [], value: [{switch, perm},{}, ...]}
@@ -166,7 +169,9 @@ model.type <<< do
       displayname: {max: 30, min: 3, required: true, type: model.type.string}
       description: {max: 1000, type: model.type.string}
       createdtime: {type: model.type.date}
+      lastactive: {type: model.type.date}
       public_email: {type: model.type.boolean}
-      avatar: {max: 300, type: model.type.string}
+      datasize: { type: model.type.number }
+      avatar: {max: 100, type: model.type.string}
 
 module.exports = model

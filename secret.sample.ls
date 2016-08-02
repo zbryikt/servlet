@@ -1,10 +1,14 @@
 module.exports = do
+  config: \localhost
   port: \9000 # backend port
   limit: '20mb'
-  watch: false
+  watch: true
 
   facebook:
-    clientSecret: \00000000000000000000000000000000
+    clientSecret: \----
+
+  google:
+    clientSecret: \----
 
   cookie:
     domain: null
@@ -19,3 +23,6 @@ module.exports = do
     maxConnections: 5
     maxMessages: 10
     auth: {user: '', pass: ''}
+
+  io-pg: do
+    uri: "postgres://username:1234@localhost/dbname"

@@ -1,6 +1,6 @@
-require! <[../engine/aux]>
-
-(engine) <- (->module.exports = it)  _
+require! <[fs bluebird]>
+require! <[../engine/aux ../engine/share/model/ ./thumb]>
+(engine,io) <- (->module.exports = it)  _
 
 engine.app.get \/d/session-test/, (req, res) ->
   if !req.session.root => req.session.root = 0
