@@ -4,7 +4,8 @@ base = do
     [str,char] = ["#str","#char"]
     "#char" * (len - str.length) + "#str"
   error: (code=403,msg="") -> new Error(msg) <<< {code}
-  reject: (code=403,msg="") -> bluebird.reject new Error(msg) <<< {code}
+  reject: (code=403,msg="") ->
+    bluebird.reject new Error(if typeof(msg) == typeof({}) => JSON.stringify(msg) else msg) <<< {code}
 
   now-tag: ->
     d = new Date!
@@ -36,6 +37,14 @@ base = do
     if as-page => res.status(403).render '403.jade', {msg: msg}
     else res.status(403)send msg
     return null
+  r413: (res, msg = "", as-page = false) ->
+    if as-page => res.status(413).render '400.jade', {msg: msg}
+    else res.status(413)send msg
+    return null
+  r402: (res, msg = "", as-page = false) ->
+    if as-page => res.status(402).render '400.jade', {msg: msg}
+    else res.status(402)send msg
+    return null
   r400: (res, msg = "", as-page = false) ->
     if as-page => res.status(400).render '400.jade', {msg: msg}
     else res.status(400)send msg
@@ -55,7 +64,7 @@ base = do
     cb req, res
 
   authorized: (cb) -> (req, res) ->
-    if not (req.user and req.user.isStaff) =>
+    if not (req.user and req.user.isstaff) =>
       return res.status(403).render('403', {url: req.originalUrl})
     cb req, res
 

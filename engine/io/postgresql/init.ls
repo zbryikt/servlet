@@ -1,13 +1,10 @@
 require! <[../../../secret ../postgresql pg bluebird]>
 
-init-sessions-table = """create table if not exists sessions (
-  key text not null unique primary key,
-  detail jsonb
-)"""
+queries = []
 
-init-users-table = """create table if not exists users (
+queries.push init-users-table = """create table if not exists users (
   key serial primary key,
-  username text constraint nlen check (char_length(username) <= 100),
+  username text not null unique constraint nlen check (char_length(username) <= 100),
   password text constraint pwlen check (char_length(password) <= 100),
   usepasswd boolean,
   displayname text, constraint displaynamelength check (char_length(displayname) <= 100),
@@ -17,6 +14,32 @@ init-users-table = """create table if not exists users (
   lastactive timestamp,
   public_email boolean,
   avatar text,
+  detail jsonb,
+  payment jsonb,
+  deleted boolean
+)"""
+
+queries.push init-purchase-table = """create table if not exists purchase (
+  key serial primary key,
+  owner int references users(key),
+  amount float,
+  name text,
+  type text,
+  item text,
+  detail jsonb,
+  createdtime timestamp,
+  modifiedtime timestamp,
+  deleted boolean
+)"""
+
+queries.push init-pwresettoken-table = """create table if not exists pwresettoken (
+  owner int references users(key),
+  token text,
+  time timestamp
+)"""
+
+queries.push init-sessions-table = """create table if not exists sessions (
+  key text not null unique primary key,
   detail jsonb
 )"""
 
@@ -30,9 +53,22 @@ query = (q) -> new bluebird (res, rej) ->
   if e => rej e
   res r
 
+consume = ->
+  if queries.length =>
+    task = queries.splice(0, 1).0
+    query task
+      .then -> consume!
+      .catch -> [console.log(it), client.end!]
+  else
+    console.log "done."
+    client.end!
+
+consume!
+/*
 query init-users-table
   .then -> query init-sessions-table
   .then ->
     console.log "done."
     client.end!
   .catch -> [console.log(it), client.end!]
+*/

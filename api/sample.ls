@@ -1,5 +1,5 @@
 require! <[fs bluebird]>
-require! <[../engine/aux ../engine/share/model/ ./thumb]>
+require! <[../engine/aux]>
 (engine,io) <- (->module.exports = it)  _
 
 engine.app.get \/d/session-test/, (req, res) ->

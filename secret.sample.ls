@@ -1,28 +1,43 @@
 module.exports = do
-  config: \localhost
+  config: \default
   port: \9000 # backend port
   limit: '20mb'
   watch: true
 
+  paypal:
+    sandbox:
+      user: \<your-key-here>
+      pass: \<your-key-here>
+    production:
+      user: \<your-key-here>
+      pass: \<your-key-here>
+
   facebook:
-    clientSecret: \----
+    clientSecret: \<your-key-here>
 
   google:
-    clientSecret: \----
+    clientSecret: \<your-key-here>
 
   cookie:
     domain: null
 
   session:
-    secret: \featureisameasurableproperty
+    secret: \<your-random-string-here>
+
+  token-secret: \<your-random-string-here>
 
   mail: do
-    host: \box590.bluehost.com
+    host: \<your-host-here>
     port: 465
     secure: true
     maxConnections: 5
     maxMessages: 10
     auth: {user: '', pass: ''}
 
+  mailgun: do
+    auth:
+      domain: \<your-domain-here>
+      api_key: \<your-key-here>
+
   io-pg: do
-    uri: "postgres://username:1234@localhost/dbname"
+    uri: "postgres://<username>:<passwd>@localhost/<dbname>"

@@ -1,0 +1,31 @@
+//- module
+doctype html
+- var debug = false
+- var version = "26"
+- var thumbnail = "thumbnail.png"
+- var thumbtype = "image/png"
+- var thumb_width = "1200"
+- var thumb_height = "630"
+- var favicon = "/assets/img/favicon.png"
+- var rootid = ""
+- var rootclass = ""
+html(lang="en")
+  block vars
+  head(prefix="og: http://ogp.me/ns#")
+    include library.jade
+    link(rel="stylesheet",type="text/css",href="/css/index.css?"+version)
+    link(rel="chrome-webstore-item",href="https://chrome.google.com/webstore/detail/einojbmllcjnkcapgajdbjjnpibkjnhh")
+    if debug
+      link(rel="stylesheet",type="text/css",href="/assets/googlefont/varela-round/index.css")
+    else
+      link(href="https://fonts.googleapis.com/css?family=Varela+Round",rel="stylesheet")
+    block head
+  body
+    include nav.jade
+    include /auth/panel.jade
+    #notifications
+      .notify(ng-repeat="n in notifications",ng-class="'notify-'+n.type",ng-cloak) {{n.message}}
+    block body
+    if !debug
+      include ga.jade
+      include facebook.jade

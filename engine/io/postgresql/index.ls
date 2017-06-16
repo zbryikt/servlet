@@ -1,38 +1,67 @@
-require! <[pg bluebird crypto ./aux]>
+require! <[pg bluebird crypto bcrypt colors ./aux]>
 
 ret = (config) ->
   @config = config
-  @authio = do
+  @authio = authio = do
     user: do
-      get: (username, password, usepasswd, detail) ~>
+      # store whole object ( no serialization )
+      serialize: (user={}) -> bluebird.resolve( user or {} )
+      deserialize: (v) ~> bluebird.resolve( v or {})
+
+      # store only key
+      #serialize: (user={}) -> bluebird.resolve( user.key or 0 )
+      #deserialize: (v) ~>
+      #  @query "select * from users where key = $1", [v]
+      #    .then (r={}) -> r.[]rows.0
+
+      hashing: (password, doMD5 = true, doBcrypt = true) -> new bluebird (res, rej) ->
+        ret = if doMD5 => crypto.createHash(\md5).update(password).digest(\hex) else password
+        if doBcrypt => bcrypt.genSalt 12, (e, salt) -> bcrypt.hash ret, salt, (e, hash) -> res hash
+        else res ret
+
+      compare: (password='', hash) -> new bluebird (res, rej) ->
+        md5 = crypto.createHash(\md5).update(password).digest(\hex)
+        bcrypt.compare md5, hash, (e, ret) -> if ret => res! else rej new Error!
+
+      get: (username, password, usepasswd, detail, doCreate = false) ~>
         if !/^[-a-z0-9~!$%^&*_=+}{\'?]+(\.[-a-z0-9~!$%^&*_=+}{\'?]+)*@([a-z0-9_][-a-z0-9_]*(\.[-a-z0-9_]+)*\.[a-z]{2,}|([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}))(:[0-9]{1,5})?$/i.exec(username) =>
-          return aux.reject new Error("not email")
-        pw = if usepasswd => crypto.createHash(\md5).update(password).digest(\hex) else ""
+          return bluebird.reject new Error("not email")
+        user = {}
         @query "select * from users where username = $1", [username]
           .then (users = {}) ~>
-            user = (users.[]rows.0)
-            if !user => return @authio.user.create username, pw, usepasswd, detail
-            if user and (usepasswd or user.usepasswd) and user.password != pw =>
-              return bluebird.reject new Error('failed')
-            return user
-          .then (user) ~>
+            user := (users.[]rows.0)
+            if !user and !doCreate => return bluebird.reject new Error("failed")
+            if !user and doCreate => return @authio.user.create username, password, usepasswd, detail
+            else if user and !(usepasswd or user.usepasswd) =>
+              delete user.password
+              return user
+            @authio.user.compare password, user.password
+          .then ->
+            if it => user := (if user => user else {}) <<< it
             delete user.password
             return user
-      create: (username, password, usepasswd, detail = {}) ~>
-        displayname = if detail => detail.displayname or detail.username
-        if !displayname => displayname = username.replace(/@.+$/, "")
-        user = {username, password, usepasswd, displayname, detail, createdtime: new Date!}
-        @query [
-          "insert into users"
-          "(username,password,usepasswd,displayname,createdtime,detail) values"
-          "($1,$2,$3,$4,$5,$6) returning key"
-        ].join(" "), [username, password, usepasswd, displayname, new Date!toUTCString!, detail]
+
+      create: (username, password, usepasswd, detail = {}, config = {}) ~>
+        user = null
+        if !/^[-a-z0-9~!$%^&*_=+}{\'?]+(\.[-a-z0-9~!$%^&*_=+}{\'?]+)*@([a-z0-9_][-a-z0-9_]*(\.[-a-z0-9_]+)*\.[a-z]{2,}|([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}))(:[0-9]{1,5})?$/i.exec(username) =>
+          return bluebird.reject new Error("not email")
+        @authio.user.hashing password, usepasswd, usepasswd
+          .then (pw-hashed) ~>
+            displayname = if detail => detail.displayname or detail.username
+            if !displayname => displayname = username.replace(/@.+$/, "")
+            user := {username, password: pw-hashed, usepasswd, displayname, detail, config, createdtime: new Date!}
+            @query [
+              "insert into users"
+              "(username,password,usepasswd,displayname,createdtime,detail,config) values"
+              "($1,$2,$3,$4,$5,$6,$7) returning key"
+            ].join(" "), [
+              user.username, user.password, user.usepasswd,
+              user.displayname, new Date!toUTCString!, user.detail, user.config
+            ]
           .then (r) ~>
             key = r.[]rows.0.key
             return user <<< {key}
-          .catch ~>
-            console.log "failed to create user"
-            console.log it.stack
+
     session: do
       get: (sid, cb) ~>
         @query "select * from sessions where key=$1", [sid]
@@ -40,6 +69,7 @@ ret = (config) ->
             cb null, (it.[]rows.0 or {}).detail
             return null
           .catch -> [console.error("session.get", it), cb it]
+        return null
       set: (sid, session, cb) ~>
         @query([
           "insert into sessions (key,detail) values"
@@ -48,10 +78,14 @@ ret = (config) ->
             cb!
             return null
           .catch -> [console.error("session.set", it), cb!]
+        return null
       destroy: (sid, cb) ~>
         @query "delete from sessions where key = $1", [sid]
-          .then -> cb!
+          .then ->
+            cb!
+            return null
           .catch -> [console.error("session.destroy",it),cb!]
+        return null
   @
 
 ret.prototype = do
@@ -59,6 +93,7 @@ ret.prototype = do
     if typeof(a) == \string => [client,q,params] = [null,a,b]
     else => [client,q,params] = [a,b,c]
     _query = (client, q, params=null) -> new bluebird (res, rej) ->
+      console.log " - " + "[QUERY]".cyan + " #{q.substring(0, 80)}"
       (e,r) <- client.query q, params, _
       if e => return rej e
       return res r

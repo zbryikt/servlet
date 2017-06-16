@@ -1,7 +1,6 @@
 require! <[bluebird fs-extra]>
-require! <[./secret ./engine ./engine/aux ./engine/share/config ./api/]>
-require! <[./engine/io/localfs ./engine/io/postgresql/]>
-config = require "./engine/config/#{secret.config}"
+require! <[./secret ./engine ./engine/aux ./engine/io/postgresql ./api ./api/ext]>
+config = require "./config/site/#{secret.config}"
 
 config = aux.merge-config config, secret
 
@@ -13,14 +12,10 @@ bluebird.config do
 
 pgsql = new postgresql config
 
-#lfs = new localfs!
-#<- lfs.init!then
-
-engine.init config, pgsql.authio
+engine.init config, pgsql.authio, (-> ext engine, pgsql)
   .then ->
     engine.app.get \/, (req, res) -> res.render 'index.jade'
     api engine, pgsql
-    # 404 fallback
     engine.app.use (req, res, next) ~> aux.r404 res, "", true
     engine.start!
   .catch ->

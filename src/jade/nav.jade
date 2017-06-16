@@ -1,0 +1,38 @@
+- if(!clsname) {
+-   clsname = {}
+- }
+//- module
+#nav-top(class=clsname.nav)
+  nav.navbar.navbar-default(role="navigation")
+    .container-fluid
+      .navbar-header
+        button.navbar-toggle.collapsed(data-toggle="collapse",data-target="#nav-collapse")
+          span.icon-bar
+          span.icon-bar
+          span.icon-bar
+        a.navbar-brand(href="/")
+          | Servlet
+      #nav-collapse.collapse.navbar-collapse
+        ul.nav.navbar-nav
+          li: a(href="#") INDEX
+
+        ul.nav.navbar-nav.pull-right(ng-cloak)
+          li: a(onclick="alert('site in static mode. you can still use it, but come back later for sign-in!')",ng-show="staticMode",
+          href="#") #[i.fa.fa-wrench] MAINTENANCE
+          li(ng-show="!staticMode && !user.data"): a#nav-login(href="#",ng-click="auth.isSignIn=true;auth.ctrl.toggle()")
+            span LOGIN
+          li(ng-show="!staticMode && !user.data"): a#nav-signup(href="#",ng-click="auth.isSignIn=false;auth.ctrl.toggle()")
+            span SIGNUP
+          li#nav-profile.dropdown(ng-show="user.data")
+            .btn(data-toggle="dropdown")
+              .avatar(ng-attr-style="background-image:url(/s/avatar/{{user.data.key}}.png)")
+              span.caret
+            ul.dropdown-menu
+              li: a(href="/me/") Profile
+              li: a(href="/me/settings/") Setting
+              li: a(href="/me/billing/") Billing
+              li.divider
+              li: a(href="#",ng-click="auth.logout()") Logout
+
+          li.heart: a(href="#") &#x2764;
+

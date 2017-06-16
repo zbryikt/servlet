@@ -1,50 +1,54 @@
-require! <[fs fs-extra path bluebird crypto LiveScript chokidar moment]>
+require! <[os fs fs-extra path bluebird crypto LiveScript chokidar moment]>
 require! <[express body-parser express-session connect-multiparty]>
 require! <[passport passport-local passport-facebook passport-google-oauth2]>
-require! <[nodemailer nodemailer-smtp-transport]>
+require! <[nodemailer nodemailer-smtp-transport csurf]>
 require! <[./aux ./watch]>
 require! 'uglify-js': uglify-js, LiveScript: lsc
 colors = require \colors/safe
 
+content-security-policy = []
+
+get-ip = (default-ifname = "en0") ->
+  ret = []
+  ifaces = os.networkInterfaces!
+  Object.keys ifaces .forEach (ifname) ->
+    if default-ifname and ifname != default-ifname => return
+    ifaces[ifname].forEach (iface) ->
+      if \IPv4 == iface.family and iface.internal == false => ret.push iface.address
+  ret
 
 backend = do
   update-user: (req) -> req.logIn req.user, ->
   #session-store: (backend) -> @ <<< backend.dd.session-store!
-  init: (config, authio) -> new bluebird (res, rej) ~>
+  init: (config, authio, extapi) -> new bluebird (res, rej) ~>
     @config = config
+    if @config.debug => # for weinre debug
+      ip = get-ip!0 or "127.0.0.1"
+      (list) <- content-security-policy.map
+      if <[connect-src script-src]>.indexOf(list.0) < 0 => return
+      list.push "http://#ip:8080"
+      list.push "#{config.urlschema}#{config.domain}"
+    content-security-policy := content-security-policy.map(-> it.join(" ")).join("; ")
     session-store = -> @ <<< authio.session
     session-store.prototype = express-session.Store.prototype
     app = express!
+    app.disable \x-powered-by
+    app.set 'trust proxy', '127.0.0.1'
     app.use (req, res, next) ->
-      res.setHeader \Content-Security-Policy, [
-        <[default-src
-          'self' blob:
-        ]>
-        <[script-src
-          'self' http://connect.facebook.net/en_US/sdk.js
-          https://www.google-analytics.com 'unsafe-inline' 'unsafe-eval'
-        ]>
-        <[style-src
-          'self' https://www.google-analytics.com 'unsafe-inline'
-          http://fonts.googleapis.com
-        ]>
-        <[img-src
-          'self' data: blob: https://www.google-analytics.com https://www.facebook.com/
-        ]>
-        <[font-src
-          'self' http://fonts.gstatic.com
-        ]>
-        <[frame-src
-          'self' data: blob: http://staticxx.facebook.com/ https://www.facebook.com/
-        ]>
-        <[connect-src
-          'self' data: blob:
-        ]>
-      ].map(-> it.join(" ")).join("; ")
+      res.header "Access-Control-Allow-Origin", "#{config.urlschema}#{config.domainIO}"
+      res.header "Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept"
+      res.header "Access-Control-Allow-Methods", "PUT"
       next!
 
+
+    app.use (req, res, next) ->
+      console.log "[#{req.method}] #{req.url}".green
+      res.setHeader \Content-Security-Policy, content-security-policy
+      res.setHeader \X-Content-Security-Policy, content-security-policy
+      next!
     app.use body-parser.json limit: config.limit
     app.use body-parser.urlencoded extended: true, limit: config.limit
+
     app.set 'view engine', 'jade'
     app.engine \ls, (path, options, callback) ->
       opt = {} <<< options
@@ -57,24 +61,26 @@ backend = do
       catch e
         [err,ret] = [e,""]
       callback err, ret
-    app.use \/, express.static(path.join(__dirname, '../static'))
     app.set 'views', path.join(__dirname, '../src/jade/')
     app.locals.basedir = app.get \views
 
-    get-user = (u, p, usep, detail, done) ->
-      authio.user.get u, p, usep, detail
+    get-user = (u, p, usep, detail, doCreate = false, done) ->
+      authio.user.get u, p, usep, detail, doCreate
         .then ->
           done null, it
           return null
-        .catch -> 
+        .catch ->
           msg = if usep => "incorrect email or password" else "did you login with social account?"
           done null, false, {message: msg}
           return null
 
+
     passport.use new passport-local.Strategy {
       usernameField: \email
       passwordField: \passwd
-    },(u,p,done) ~> get-user u, p, true, null, done
+    },(u,p,done) ~>
+      get-user u, p, true, null, false, done
+
 
     passport.use new passport-google-oauth2.Strategy(
       do
@@ -88,7 +94,7 @@ backend = do
           done null, false, do
             message: "We can't get email address from your Google account. Please try signing up with email."
           return null
-        get-user profile.emails.0.value, null, false, profile, done
+        get-user profile.emails.0.value, null, false, profile, true, done
     )
 
     passport.use new passport-facebook.Strategy(
@@ -102,7 +108,7 @@ backend = do
           done null, false, do
             message: "We can't get email address from your Facebook account. Please try signing up with email."
           return null
-        get-user profile.emails.0.value, null, false, profile, done
+        get-user profile.emails.0.value, null, false, profile, true, done
     )
 
     app.use express-session do
@@ -110,21 +116,51 @@ backend = do
       resave: true
       saveUninitialized: true
       store: new session-store!
+      proxy: true
       cookie: do
-        #secure: true # TODO: https. also need to dinstinguish production/staging
         path: \/
         httpOnly: true
         maxAge: 86400000 * 30 * 12 #  1 year
-        domain: config.cookie.domain if config.{}cookie.domain
+        domain: \localhost
     app.use passport.initialize!
     app.use passport.session!
 
-    passport.serializeUser (u,done) -> done null, JSON.stringify(u)
-    passport.deserializeUser (v,done) -> done null, JSON.parse(v)
+    passport.serializeUser (u,done) ->
+      authio.user.serialize u .then (v) ->
+        done null, v
+        return null
+      return null
+    passport.deserializeUser (v,done) ->
+      authio.user.deserialize v .then (u) ->
+        done null, u or {}
+        return null
+      return null
 
     router = do
       user: express.Router!
       api: express.Router!
+
+    backend.csrfProtection = csurf!
+    app.use backend.csrfProtection
+    app.use "/e", extapi!
+
+    app.get \/js/global.js, backend.csrfProtection, (req, res) ->
+      res.setHeader \content-type, \application/javascript
+      payload = JSON.stringify({
+        user: req.user, global: true, csrfToken: req.csrfToken!, production: config.is-production
+      })
+      if req.user => delete req.user.{}payment.strip
+      res.send """(function() { var req = #payload;
+      if(window._backend_) { angular.module("backend").factory("global",["context",function(context){
+        var own={}.hasOwnProperty,key;
+        for (key in req) if (own.call(req, key)) context[key] = req[key];
+        return req;
+      }]); }else{
+        angular.module("backend",[]).factory("global",[function(){return req;}]);
+      }})()"""
+
+    # this goes after global.js so the static global.js will never be served.
+    app.use \/, express.static(path.join(__dirname, '../static'))
 
     app
       ..use "/d", router.api
@@ -141,6 +177,14 @@ backend = do
       ..get \/200, (req,res) -> res.json(req.user)
       ..get \/403, (req,res) -> res.status(403)send!
       ..get \/login, (req, res) -> res.render \login
+      ..post \/signup, (req, res) ->
+        {email,displayname, passwd, config} = req.body{email,displayname, passwd, config}
+        if !email or !displayname or passwd.length < 4 => return aux.r400 res
+        authio.user.create email, passwd, true, {displayname}, (config or {})
+          .then (user)->
+            req.logIn user, -> res.redirect \/u/200; return null
+            return null
+          .catch -> res.redirect \/u/403; return null
       ..post \/login, passport.authenticate \local, do
         successRedirect: \/u/200
         failureRedirect: \/u/403
@@ -150,11 +194,11 @@ backend = do
       ..get \/auth/google, passport.authenticate \google, {scope: ['email']}
       ..get \/auth/google/callback, passport.authenticate \google, do
         successRedirect: \/
-        failureRedirect: \/auth/google-fail.html
+        failureRedirect: \/auth/failed/
       ..get \/auth/facebook, passport.authenticate \facebook, {scope: ['email']}
       ..get \/auth/facebook/callback, passport.authenticate \facebook, do
         successRedirect: \/
-        failureRedirect: \/auth/fb-fail.html
+        failureRedirect: \/auth/failed/
 
     postman = nodemailer.createTransport nodemailer-smtp-transport config.mail
 
@@ -184,16 +228,22 @@ backend = do
 
   start: (cb) ->
     @watch!
+    # Try to handle this:
+    # [17/05/08 01:54:30] FacebookTokenError: This authorization code has been used.  /  undefined
     if !@config.debug =>
       (err, req, res, next) <- @app.use
-      if err =>
+      if !err => return next!
+      if err.code == \EBADCSRFTOKEN =>
+        aux.r403 res, "be hold!", false
+      else
         console.error(
           colors.red.underline("[#{moment!format 'YY/MM/DD HH:mm:ss'}]"),
+          colors.yellow(err.toString!)
+          " / "
           colors.yellow(err.path)
         )
         console.error colors.grey(err.stack)
         res.status 500 .render '500'
-      else next!
     if @config.watch => watch.start @config
     server = @app.listen @config.port, -> console.log "listening on port #{server.address!port}"
 

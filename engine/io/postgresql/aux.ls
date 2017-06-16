@@ -1,5 +1,3 @@
-require! <[../../share/model/]>
-
 aux = do
   insert: do
     assemble: (pairs) ->
