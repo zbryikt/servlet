@@ -42,7 +42,7 @@ backend = do
 
 
     app.use (req, res, next) ->
-      console.log "[#{req.method}] #{req.url}".green
+      #console.log "[#{req.method}] #{req.url}".green
       res.setHeader \Content-Security-Policy, content-security-policy
       res.setHeader \X-Content-Security-Policy, content-security-policy
       next!
@@ -140,6 +140,23 @@ backend = do
       user: express.Router!
       api: express.Router!
 
+    app.use "/u", router.user
+    router.user
+      ..post \/signup, (req, res) ->
+        {email,displayname, passwd, config} = req.body{email,displayname, passwd, config}
+        if !email or !displayname or passwd.length < 4 => return aux.r400 res
+        authio.user.create email, passwd, true, {displayname}, (config or {})
+          .then (user)->
+            req.logIn user, -> res.redirect \/u/200; return null
+            return null
+          .catch ->
+            #console.log "[CREATE USER] Failed due to: ", (it or "").toString!substring(0,220)
+            #console.log "        --->  user: ", email, " / ", displayname
+            res.redirect \/u/403; return null
+      ..post \/login, passport.authenticate \local, do
+        successRedirect: \/u/200
+        failureRedirect: \/u/403
+
     backend.csrfProtection = csurf!
     app.use backend.csrfProtection
     app.use "/e", extapi!
@@ -151,6 +168,7 @@ backend = do
       })
       if req.user => delete req.user.{}payment.strip
       res.send """(function() { var req = #payload;
+      if(req.user && req.user.key) window.userkey = req.user.key;
       if(window._backend_) { angular.module("backend").factory("global",["context",function(context){
         var own={}.hasOwnProperty,key;
         for (key in req) if (own.call(req, key)) context[key] = req[key];
@@ -164,7 +182,7 @@ backend = do
 
     app
       ..use "/d", router.api
-      ..use "/u", router.user
+    #  ..use "/u", router.user
       ..get "/d/health", (req, res) -> res.json {}
 
     router.user
@@ -176,18 +194,8 @@ backend = do
         )
       ..get \/200, (req,res) -> res.json(req.user)
       ..get \/403, (req,res) -> res.status(403)send!
-      ..get \/login, (req, res) -> res.render \login
-      ..post \/signup, (req, res) ->
-        {email,displayname, passwd, config} = req.body{email,displayname, passwd, config}
-        if !email or !displayname or passwd.length < 4 => return aux.r400 res
-        authio.user.create email, passwd, true, {displayname}, (config or {})
-          .then (user)->
-            req.logIn user, -> res.redirect \/u/200; return null
-            return null
-          .catch -> res.redirect \/u/403; return null
-      ..post \/login, passport.authenticate \local, do
-        successRedirect: \/u/200
-        failureRedirect: \/u/403
+      ..get \/login, (req, res) -> res.render \auth/index.jade
+
       ..get \/logout, (req, res) ->
         req.logout!
         res.redirect \/

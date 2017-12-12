@@ -1,5 +1,14 @@
-require! <[bluebird]>
+require! <[bluebird moment moment-timezone]>
+
 base = do
+  eschtml: (->
+    map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&#34;', "'": '&#39;'}
+    (str) -> str.replace(/&<>'"]/g, (-> map[it]))
+  )!
+
+  log: (req, msg, head = "") ->
+    date = moment(new Date!).tz("Asia/Taipei").format("MM-DD HH:mm")
+    console.log "[#date|#head#{if head and req => ' ' else ''}#{if req => req.user.key else ''}] #msg"
   pad: (str="", len=2,char=' ') ->
     [str,char] = ["#str","#char"]
     "#char" * (len - str.length) + "#str"
@@ -64,7 +73,7 @@ base = do
     cb req, res
 
   authorized: (cb) -> (req, res) ->
-    if not (req.user and req.user.isstaff) =>
+    if not (req.user and req.user.staff == 1) =>
       return res.status(403).render('403', {url: req.originalUrl})
     cb req, res
 

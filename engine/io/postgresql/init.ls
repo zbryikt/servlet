@@ -16,19 +16,7 @@ queries.push init-users-table = """create table if not exists users (
   avatar text,
   detail jsonb,
   payment jsonb,
-  deleted boolean
-)"""
-
-queries.push init-purchase-table = """create table if not exists purchase (
-  key serial primary key,
-  owner int references users(key),
-  amount float,
-  name text,
-  type text,
-  item text,
-  detail jsonb,
-  createdtime timestamp,
-  modifiedtime timestamp,
+  config jsonb,
   deleted boolean
 )"""
 
