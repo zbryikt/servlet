@@ -2,6 +2,6 @@
 # when server is alive, engine/index.ls serves another global.js.
 (->
   req = {static: true}
-  if window._backend_ => angular.module(\backend) else angular.module(\backend, <[]>)
+  if angular? => if window._backend_ => angular.module(\backend) else angular.module(\backend, <[]>)
     ..factory \global, <[]> ++ -> req
 )!

@@ -169,13 +169,14 @@ backend = do
       if req.user => delete req.user.{}payment.strip
       res.send """(function() { var req = #payload;
       if(req.user && req.user.key) window.userkey = req.user.key;
+      if(typeof(angular) != "undefined" && angular) {
       if(window._backend_) { angular.module("backend").factory("global",["context",function(context){
         var own={}.hasOwnProperty,key;
         for (key in req) if (own.call(req, key)) context[key] = req[key];
         return req;
       }]); }else{
         angular.module("backend",[]).factory("global",[function(){return req;}]);
-      }})()"""
+      }}})()"""
 
     # this goes after global.js so the static global.js will never be served.
     app.use \/, express.static(path.join(__dirname, '../static'))
