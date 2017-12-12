@@ -39,23 +39,23 @@ base = do
     console.log "[ERROR] #error"
     res.status(500).json({detail:error})
   r404: (res, msg = "", as-page = false) ->
-    if as-page => res.status(404).render '404.jade', {msg: msg}
+    if as-page => res.status(404).render 'err/404.jade', {msg: msg}
     else res.status(404)send msg
     return null
   r403: (res, msg = "", as-page = false) ->
-    if as-page => res.status(403).render '403.jade', {msg: msg}
+    if as-page => res.status(403).render 'err/403.jade', {msg: msg}
     else res.status(403)send msg
     return null
   r413: (res, msg = "", as-page = false) ->
-    if as-page => res.status(413).render '400.jade', {msg: msg}
+    if as-page => res.status(413).render 'err/400.jade', {msg: msg}
     else res.status(413)send msg
     return null
   r402: (res, msg = "", as-page = false) ->
-    if as-page => res.status(402).render '400.jade', {msg: msg}
+    if as-page => res.status(402).render 'err/400.jade', {msg: msg}
     else res.status(402)send msg
     return null
   r400: (res, msg = "", as-page = false) ->
-    if as-page => res.status(400).render '400.jade', {msg: msg}
+    if as-page => res.status(400).render 'err/400.jade', {msg: msg}
     else res.status(400)send msg
     return null
   r200: (res) -> res.send!
