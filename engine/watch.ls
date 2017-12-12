@@ -12,6 +12,21 @@ cwd = path.resolve process.cwd!
 cwd-re = new RegExp RegExp.escape "#cwd#{if cwd[* - 1]=='/' => "" else \/}"
 log = (error, stdout, stderr) -> if "#{stdout}\n#{stderr}".trim! => console.log that
 
+jade-extapi = do
+  md: -> markdown.toHTML it
+  yaml: -> js-yaml.safe-load fs.read-file-sync it
+  yamls: (dir) ->
+    ret = fs.readdir-sync dir
+      .map -> "#dir/#it"
+      .filter -> /\.yaml$/.exec(it)
+      .map ->
+        try
+          js-yaml.safe-load(fs.read-file-sync it)
+        catch e
+          console.log "[ERROR@#it]: ", e
+    return ret
+
+
 newer = (f1, f2) ->
   if !fs.exists-sync(f1) => return false
   if !fs.exists-sync(f2) => return true
@@ -204,7 +219,10 @@ base = do
           content ++= affix-code
           content = content.join(\\n)
 
-          result = jade.render content, {filename: src, basedir: path.join(cwd,\src/jade/)} <<< {config: data}
+          result = jade.render(
+            content,
+            {filename: src, basedir: path.join(cwd,\src/jade/)} <<< {config: data} <<< jade-extapi
+          )
           <- fs-extra.mkdirs path.dirname(des), _
           fs.write-file-sync des, result
           console.log "[BUILD]   #src --> #des"
@@ -239,7 +257,7 @@ base = do
           try
             fs.write-file-sync(des, jade.render(
               code,
-              {filename: src, basedir: path.join(cwd,\src/jade/)} <<< {config: data}
+              {filename: src, basedir: path.join(cwd,\src/jade/)} <<< {config: data} <<< jade-extapi
             ))
             logs.push "[BUILD]   #src --> #des"
           catch
