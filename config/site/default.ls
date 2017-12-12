@@ -4,8 +4,8 @@
     debug: false
     is-production: true
     facebook:
-      clientID: \538062799648166
+      clientID: \<your-facebook-clientid-here>
     google:
-      clientID: \426879484014-vc7l8q5d8b86ke70u6sfamgbm3kt4tsr.apps.googleusercontent.com
+      clientID: \<your-google-clientid-here>
   if module? => module.exports = config
 )!
