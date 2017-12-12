@@ -3,6 +3,7 @@ module.exports = do
   port: \9000 # backend port
   limit: '20mb'
   watch: true
+  superuser: \<your-username-here>
 
   paypal:
     sandbox:
