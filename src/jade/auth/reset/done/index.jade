@@ -1,7 +1,4 @@
-extends ../../../base.jade
-block vars
-  - var rootid = "errorview"
-block head
+extends /base.jade
 block body
   .spc1
   #root.narrow
@@ -25,4 +22,4 @@ block body
     br
     script.
       if(!window.location.search) { window.location.search = "?nexturl=/" }
-  include ../../../footer.jade
+  include /module/footer.jade

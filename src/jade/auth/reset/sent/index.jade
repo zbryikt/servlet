@@ -1,7 +1,4 @@
-extends ../../../base.jade
-block vars
-  - var rootid = "errorview"
-block head
+extends /base.jade
 block body
   .spc1
   style
@@ -14,7 +11,7 @@ block body
     #auth-reset-sent.text-center
       img(src="/assets/img/auth/sent.gif")
       i.fa.fa-check
-    p.text-center.grayed not receiving mail? #[br] try #[a(href="/auth/reset/") send it again] or #[a(href="mailto:contact@loading.io") Contact US]
+    p.text-center.grayed not receiving mail? #[br] try #[a(href="/auth/reset/") send it again]
 
     p.text-center #[br] #[a(href="/") back to home]
     br

@@ -1,16 +1,12 @@
-extends base.jade
-block vars
-  - var lib = {d3js: false, clipboardjs: false, domtoimg: false, ldcolorpicker: true, gifjs: false}
-  - var rootid = "errorview"
-block head
+extends /base.jade
 block body
   div &nbsp;
   #root
     br
     br
-    h1.text-center Not Found.
+    h1.text-center Bad Request.
     .text-center.grayed
-      | " http 404 
+      | " http 400 
       if msg
         | : #{msg}
       | "

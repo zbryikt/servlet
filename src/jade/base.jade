@@ -1,7 +1,7 @@
 //- module
 doctype html
 - var debug = false
-- var version = "26"
+- var version = "0"
 - var thumbnail = "thumbnail.png"
 - var thumbtype = "image/png"
 - var thumb_width = "1200"
@@ -10,18 +10,16 @@ doctype html
 - var rootid = ""
 - var rootclass = ""
 html(lang="en")
+  include /mixins/index.jade
   block vars
   head(prefix="og: http://ogp.me/ns#")
-    include library.jade
-    link(rel="stylesheet",type="text/css",href="/css/index.css?"+version)
-    link(rel="chrome-webstore-item",href="https://chrome.google.com/webstore/detail/einojbmllcjnkcapgajdbjjnpibkjnhh")
-    if debug
-      link(rel="stylesheet",type="text/css",href="/assets/googlefont/varela-round/index.css")
-    else
-      link(href="https://fonts.googleapis.com/css?family=Varela+Round",rel="stylesheet")
+    include /module/head.jade
+    +css("/css/index.css")
     block head
-  body
-    include nav.jade
+    +script("/js/global.js")
+    +script("/js/base.js")
+  body(id=rootid,class=rootclass)
+    include /nav.jade
     include /auth/panel.jade
     #notifications
       .notify(ng-repeat="n in notifications",ng-class="'notify-'+n.type",ng-cloak) {{n.message}}
