@@ -313,10 +313,6 @@ h6.tag {
     display: none;
   }
 }
-.grayed {
-  cursor: default;
-  color: #999;
-}
 [ng:cloak],
 [ng-cloak],
 [data-ng-cloak],
@@ -507,7 +503,7 @@ h6.tag {
   top: -4px;
   right: -4px;
 }
-.grayed {
+.gray {
   color: #999;
 }
 .light {
@@ -524,9 +520,6 @@ h6.tag {
 }
 .huge {
   font-size: 3em;
-}
-.dropdown-menu > li > a {
-  font-family: Varela Round;
 }
  {
   width: 100%;
