@@ -113,6 +113,9 @@ base = do
     @config = config or {config: \default}
     <[src src/ls src/styl static static/css static/js static/js/pack/ static/css/pack/]>.map ->
       if !fs.exists-sync it => fs.mkdir-sync it
+    chokidar.watch 'config/scriptpack.ls', ignored: (~> @ignore-func it), persistent: true
+      .on \add, ~> @packer.watcher it
+      .on \change, ~> @packer.watcher it
     chokidar.watch 'static/css', ignored: (~> @ignore-func it), persistent: true
       .on \add, ~> @packer.watcher it
       .on \change, ~> @packer.watcher it
@@ -136,7 +139,7 @@ base = do
       for k,v of @queue.{}js =>
         des = "static/js/pack/#k.js"
         des-min = "static/js/pack/#k.min.js"
-        ret = [fs.read-file-sync(file).toString! for file in v.1].join("")
+        ret = [fs.read-file-sync(file).toString! for file in v.1].join("\n")
         #ret = uglify-js.minify(ret,{fromString:true}).code
         #if !base.config.debug => ret = uglify-js.minify(ret,{fromString:true}).code
         fs.write-file-sync des, ret
@@ -172,7 +175,7 @@ base = do
       for [type,k,v] in pack =>
         if @queue{}[type][k] => continue
         files = v.map(->path.join(\static, it))
-        if (d in files) => @queue{}[type][k] = [d, files]
+        if (d in files) or d == 'config/scriptpack.ls' => @queue{}[type][k] = [d, files]
       if [k for k of @queue.{}css].length or [k for k of @queue.{}js].length =>
         if @handle => clearTimeout(@handle)
         @handle = setTimeout((~> @handler!), 500)
@@ -228,7 +231,7 @@ base = do
         if !/src\/jade/.exec(src) => continue
         try
           code = fs.read-file-sync src .toString!
-          if /^\/\/- (module|view) ?/.exec(code) => return
+          if /^\/\/- ?(module|view) ?/.exec(code) => continue
           des = src.replace(/src\/jade/, "static").replace(/\.jade/, ".html")
           if newer(des, _src) => continue
           desdir = path.dirname(des)
@@ -276,12 +279,15 @@ base = do
         console.log e.message
       logs = []
       _src = src
+      srcs = srcs ++ [src]
       if srcs => for src in srcs
         if !/src\/styl/.exec(src) => continue
         try
           des = src.replace(/src\/styl/, "static/css").replace(/\.styl$/, ".css")
           if newer(des, _src) => continue
-          stylus fs.read-file-sync(src)toString!
+          code = fs.read-file-sync(src)toString!
+          if /^\/\/- ?(module) ?/.exec(code) => continue
+          stylus code
             .set \filename, src
             .define 'index', (a, b) ->
               a = (a.string or a.val).split(' ')
@@ -295,8 +301,9 @@ base = do
                 ]
               else =>
                 mkdir-recurse path.dirname(des)
-                if !@config.debug => css = uglify-css.processString css, uglyComments: true
                 fs.write-file-sync des, css
+                if !@config.debug => css = uglify-css.processString css, uglyComments: true
+                fs.write-file-sync des.replace(/\.css$/, ".min.css"), css
                 logs.push "[BUILD]   #src --> #des"
         catch
           logs.push "[BUILD]   #src failed: "
