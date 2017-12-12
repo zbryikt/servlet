@@ -25,5 +25,5 @@ html(lang="en")
       .notify(ng-repeat="n in notifications",ng-class="'notify-'+n.type",ng-cloak) {{n.message}}
     block body
     if !debug
-      include ga.jade
-      include facebook.jade
+      include /module/ga.jade
+      include /module/facebook.jade
