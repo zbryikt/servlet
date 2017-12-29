@@ -8,8 +8,9 @@
     ]>
   config.js <<< do
     base: <[
-      /assets/bootstrap/4.0.0-beta/js/bootstrap.min.js
+      /assets/jquery/1.10.2/jquery.min.js
       /assets/popper/1.12.5/index.js
+      /assets/bootstrap/4.0.0-beta/js/bootstrap.min.js
       /js/ldBase/index.js
       /js/ldBase/util.js
       /js/index.js
