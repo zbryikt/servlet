@@ -25,16 +25,20 @@ backend = do
   #session-store: (backend) -> @ <<< backend.dd.session-store!
   init: (config, authio, extapi) -> new bluebird (res, rej) ~>
     @config = config
-    oidc = new oidc-provider config.domain, do
-      features: devInteractions: false
-      findById: -> authio.oidc.find-by-id
-      interactionUrl: -> "/openid/i/#{it.oidc.uuid}"
-    <~ oidc.initialize({
-      keystore: openid-keystore
-      clients: [{client_id: 'foo', client_secret: 'bar', redirect_uris: <[http://localhost:9000/cb]>}]
-      adapter: authio.oidc.adapter
-    }).then _
-    oidc.app.proxy = true
+    oidc = null
+    promise = if config.openid-provider.enable =>
+      oidc = new oidc-provider config.domain, do
+        features: devInteractions: false
+        findById: -> authio.oidc.find-by-id
+        interactionUrl: -> "/openid/i/#{it.oidc.uuid}"
+      oidc.initialize({
+        keystore: openid-keystore
+        clients: [{client_id: 'foo', client_secret: 'bar', redirect_uris: <[http://localhost:9000/cb]>}]
+        adapter: authio.oidc.adapter
+      })
+    else bluebird.resolve!
+    <~ promise.then _
+    if oidc => oidc.app.proxy = true
     if @config.debug => # for weinre debug
       ip = get-ip!0 or "127.0.0.1"
       (list) <- content-security-policy.map
@@ -250,18 +254,18 @@ backend = do
         successRedirect: \/
         failureRedirect: \/auth/failed/
 
-    app.get \/openid/i/:grant, (req, res) ->
-      oidc.interactionDetails(req).then (details) ->
-        if !req.user => return res.render \auth/index
+    if oidc =>
+      app.get \/openid/i/:grant, (req, res) ->
+        oidc.interactionDetails(req).then (details) ->
+          if !req.user => return res.render \auth/index
+          ret = do
+            login: account: req.user.key, acr: '1', remember: true, ts: Math.floor(new Date!getTime! * 0.001)
+          oidc.interactionFinished(req, res, ret)
+      app.get \/openid/i/:grant/login, (req, res) ->
         ret = do
           login: account: req.user.key, acr: '1', remember: true, ts: Math.floor(new Date!getTime! * 0.001)
         oidc.interactionFinished(req, res, ret)
-    app.get \/openid/i/:grant/login, (req, res) ->
-      ret = do
-        login: account: req.user.key, acr: '1', remember: true, ts: Math.floor(new Date!getTime! * 0.001)
-      oidc.interactionFinished(req, res, ret)
-
-    app.use \/openid/, oidc.callback
+      app.use \/openid/, oidc.callback
 
     postman = nodemailer.createTransport nodemailer-smtp-transport config.mail
 

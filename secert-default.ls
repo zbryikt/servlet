@@ -4,6 +4,8 @@ module.exports = do
   limit: '20mb'
   watch: true
   superuser: \<your-username>
+  openid-provider: do
+    enable: false
 
   paypal:
     sandbox:
