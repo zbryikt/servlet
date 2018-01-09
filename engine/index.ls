@@ -1,11 +1,14 @@
-require! <[os fs fs-extra path bluebird crypto LiveScript chokidar moment]>
-require! <[express body-parser express-session connect-multiparty]>
+require! <[os fs fs-extra path bluebird crypto LiveScript chokidar moment jade]>
+require! <[express body-parser express-session connect-multiparty oidc-provider]>
 require! <[passport passport-local passport-facebook passport-google-oauth2]>
-require! <[nodemailer nodemailer-smtp-transport csurf]>
+require! <[nodemailer nodemailer-smtp-transport csurf require-reload]>
+require! <[../config/keys/openid-keystore.json ./io/postgresql/openid-adapter]>
 require! <[./aux ./watch]>
 require! 'uglify-js': uglify-js, LiveScript: lsc
+reload = require-reload require
 colors = require \colors/safe
 
+cwd = path.resolve process.cwd!
 content-security-policy = []
 
 get-ip = (default-ifname = "en0") ->
@@ -22,6 +25,16 @@ backend = do
   #session-store: (backend) -> @ <<< backend.dd.session-store!
   init: (config, authio, extapi) -> new bluebird (res, rej) ~>
     @config = config
+    oidc = new oidc-provider config.domain, do
+      features: devInteractions: false
+      findById: -> authio.oidc.find-by-id
+      interactionUrl: -> "/openid/i/#{it.oidc.uuid}"
+    <~ oidc.initialize({
+      keystore: openid-keystore
+      clients: [{client_id: 'foo', client_secret: 'bar', redirect_uris: <[http://localhost:9000/cb]>}]
+      adapter: authio.oidc.adapter
+    }).then _
+    oidc.app.proxy = true
     if @config.debug => # for weinre debug
       ip = get-ip!0 or "127.0.0.1"
       (list) <- content-security-policy.map
@@ -40,7 +53,6 @@ backend = do
       res.header "Access-Control-Allow-Methods", "PUT"
       next!
 
-
     app.use (req, res, next) ->
       #console.log "[#{req.method}] #{req.url}".green
       res.setHeader \Content-Security-Policy, content-security-policy
@@ -48,6 +60,18 @@ backend = do
       next!
     app.use body-parser.json limit: config.limit
     app.use body-parser.urlencoded extended: true, limit: config.limit
+    app.engine \jade, (file-path, options, cb) ~>
+      if !/\.jade$/.exec(file-path) => file-path = "#{file-path}.jade"
+      fs.read-file file-path, (e, content) ~>
+        if e => return cb e
+        data = reload "../config/site/#{@config.config}.ls"
+        try
+          ret = jade.render(content,
+            {filename: file-path, basedir: path.join(cwd,\src/jade/)} <<< {config: data} <<< watch.jade-extapi
+          )
+          return cb(null, ret)
+        catch e
+          return cb e
 
     app.set 'view engine', 'jade'
     app.engine \ls, (path, options, callback) ->
@@ -171,7 +195,7 @@ backend = do
       })
       if req.user => delete req.user.{}payment.strip
       res.send """(function() { var req = #payload;
-      if(req.user && req.user.key) window.userkey = req.user.key;
+      if(req.user && req.user.key) { window.userkey = req.user.key; window.user = req.user; }
       if(typeof(angular) != "undefined" && angular) {
       if(window._backend_) { angular.module("backend").factory("global",["context",function(context){
         var own={}.hasOwnProperty,key;
@@ -182,6 +206,20 @@ backend = do
       }}})()"""
 
     # this goes after global.js so the static global.js will never be served.
+
+    app.use \/, (req, res, next) ->
+      path = req.path.replace(/^\/?/,'/').replace(/\/?$/,'/')
+      file = [
+        ["static#{path}index.html", "src/jade#{path}index.jade"]
+        ["static#{path}", "src/jade#{path}".replace(/\.html$/, '.jade')]
+      ].filter(-> fs.exists-sync(it.1)).0
+      if !file => return next!
+      logs = []
+      res.header "Content-Type", "text/html"
+      if watch.jade(file.1, file.0, null, logs, null, true) => return res.send logs.join('<br>')
+      console.log "[BUILD] On Demand: #{file.1} --> #{file.0}"
+      res.send fs.read-file-sync file.0
+
     app.use \/, express.static(path.join(__dirname, '../static'))
 
     app
@@ -211,6 +249,19 @@ backend = do
       ..get \/auth/facebook/callback, passport.authenticate \facebook, do
         successRedirect: \/
         failureRedirect: \/auth/failed/
+
+    app.get \/openid/i/:grant, (req, res) ->
+      oidc.interactionDetails(req).then (details) ->
+        if !req.user => return res.render \auth/index
+        ret = do
+          login: account: req.user.key, acr: '1', remember: true, ts: Math.floor(new Date!getTime! * 0.001)
+        oidc.interactionFinished(req, res, ret)
+    app.get \/openid/i/:grant/login, (req, res) ->
+      ret = do
+        login: account: req.user.key, acr: '1', remember: true, ts: Math.floor(new Date!getTime! * 0.001)
+      oidc.interactionFinished(req, res, ret)
+
+    app.use \/openid/, oidc.callback
 
     postman = nodemailer.createTransport nodemailer-smtp-transport config.mail
 
@@ -255,7 +306,7 @@ backend = do
           colors.yellow(err.path)
         )
         console.error colors.grey(err.stack)
-        res.status 500 .render '500'
+        res.status 500 .render 'err/500'
     if @config.watch => watch.start @config
     server = @app.listen @config.port, -> console.log "listening on port #{server.address!port}"
 
