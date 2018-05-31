@@ -1,10 +1,10 @@
 (->
   config = do
-    name: \servlet
-    domain: \servlet.local
-    scheme: \http
-    debug: true
-    is-production: false
+    name: \<your-project-name>
+    domain: \<your-production-domain-name>
+    scheme: \https
+    debug: false
+    is-production: true
     facebook:
       clientID: \<your-facebook-clientid-here>
     google:
