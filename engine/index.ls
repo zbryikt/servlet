@@ -2,7 +2,7 @@ config = require '../secret'
 require! <[os fs fs-extra path bluebird crypto LiveScript chokidar moment]>
 require! <[express body-parser express-session connect-multiparty oidc-provider]>
 require! <[passport passport-local passport-facebook passport-google-oauth2]>
-require! <[nodemailer nodemailer-smtp-transport csurf require-reload]>
+require! <[nodemailer nodemailer-smtp-transport csurf require-reload pug]>
 if config.openid-provider.enable =>
   require! <[../config/keys/openid-keystore.json ./io/postgresql/openid-adapter]>
 require! <[./aux ./watch]>
