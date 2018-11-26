@@ -1,4 +1,4 @@
-require! <[bluebird moment moment-timezone]>
+require! <[bluebird moment moment-timezone request]>
 
 base = do
   eschtml: (->
@@ -81,6 +81,31 @@ base = do
   needlogin: (cb) -> (req, res) ->
     if not (req.user and req.user.key) => return res.redirect("/u/login?nexturl=#{req.originalUrl}")
     cb req, res
+
+  need-token: (req, res, next) ->
+    token = if req.headers and req.headers.authorization => req.headers.authorization.split(' ').1
+    else if req.{}query.access_token => that
+    if !token and !(req.user and req.user.key) => return aux.r403 res
+    promise = if token =>
+      new Promise (res, rej) ->
+        (e,r,b) <- request {
+          url: "#{engine.config.domain}/openid/me"
+          method: \POST
+          headers:
+            'authorization': "Bearer #{token}"
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }, _
+        if e => return rej new Error(e)
+        try
+          data = JSON.parse(b)
+        catch e
+          return rej new Error(e)
+        if !data.sub => return rej!
+        return res {key: data.sub}
+    else bluebird.resolve {key: req.user.key}
+    promise.then ({key}) ->
+      req.auth = { token, key }
+      next!
 
   merge-config: (a,b) ->
     for k,v of b =>

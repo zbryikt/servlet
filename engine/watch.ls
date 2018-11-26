@@ -179,6 +179,7 @@ base = do
           compressor: 'csso'
           input: des
           output: des-min
+          callback: (e, m) -> if e => console.log e
         })
 
         console.log "[BUILD] Pack '#k' -> #des by #{v.0}"

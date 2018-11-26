@@ -52,6 +52,7 @@ backend = do
     session-store.prototype = express-session.Store.prototype
     app = express!
     app.disable \x-powered-by
+    app.set \config, config
     app.set 'trust proxy', '127.0.0.1'
     app.use (req, res, next) ->
       res.header "Access-Control-Allow-Origin", "#{config.urlschema}#{config.domainIO}"
@@ -73,7 +74,10 @@ backend = do
         data = reload "../config/site/#{@config.config}.ls"
         try
           ret = jade.render(content,
-            {filename: file-path, basedir: path.join(cwd,\src/jade/)} <<< {config: data} <<< watch.jade-extapi
+            {filename: file-path, basedir: path.join(cwd,\src/jade/)}
+              <<< (options or {})
+              <<< {config: data}
+              <<< watch.jade-extapi
           )
           return cb(null, ret)
         catch e
