@@ -1,5 +1,5 @@
 config = require '../secret'
-require! <[os fs fs-extra path bluebird crypto LiveScript chokidar moment jade]>
+require! <[os fs fs-extra path bluebird crypto LiveScript chokidar moment]>
 require! <[express body-parser express-session connect-multiparty oidc-provider]>
 require! <[passport passport-local passport-facebook passport-google-oauth2]>
 require! <[nodemailer nodemailer-smtp-transport csurf require-reload]>
@@ -67,23 +67,23 @@ backend = do
       next!
     app.use body-parser.json limit: config.limit
     app.use body-parser.urlencoded extended: true, limit: config.limit
-    app.engine \jade, (file-path, options, cb) ~>
-      if !/\.jade$/.exec(file-path) => file-path = "#{file-path}.jade"
+    app.engine \pug, (file-path, options, cb) ~>
+      if !/\.pug/.exec(file-path) => file-path = "#{file-path}.pug"
       fs.read-file file-path, (e, content) ~>
         if e => return cb e
         data = reload "../config/site/#{@config.config}.ls"
         try
-          ret = jade.render(content,
-            {filename: file-path, basedir: path.join(cwd,\src/jade/)}
+          ret = pug.render(content,
+            {filename: file-path, basedir: path.join(cwd,\src/pug/)}
               <<< (options or {})
               <<< {config: data}
-              <<< watch.jade-extapi
+              <<< watch.pug-extapi
           )
           return cb(null, ret)
         catch e
           return cb e
 
-    app.set 'view engine', 'jade'
+    app.set 'view engine', 'pug'
     app.engine \ls, (path, options, callback) ->
       opt = {} <<< options
       delete opt.settings
@@ -95,7 +95,7 @@ backend = do
       catch e
         [err,ret] = [e,""]
       callback err, ret
-    app.set 'views', path.join(__dirname, '../src/jade/')
+    app.set 'views', path.join(__dirname, '../src/pug/')
     app.locals.basedir = app.get \views
 
     get-user = (u, p, usep, detail, doCreate = false, done) ->
@@ -220,13 +220,13 @@ backend = do
     app.use \/, (req, res, next) ->
       path = req.path.replace(/^\/?/,'/').replace(/\/?$/,'/')
       file = [
-        ["static#{path}index.html", "src/jade#{path}index.jade"]
-        ["static#{path}", "src/jade#{path}".replace(/\.html$/, '.jade')]
+        ["static#{path}index.html", "src/pug#{path}index.pug"]
+        ["static#{path}", "src/pug#{path}".replace(/\.html$/, '.pug')]
       ].filter(-> fs.exists-sync(it.1)).0
       if !file => return next!
       logs = []
       res.header "Content-Type", "text/html"
-      if watch.jade(file.1, file.0, null, logs, null, true) => return res.send logs.join('<br>')
+      if watch.pug(file.1, file.0, null, logs, null, true) => return res.send logs.join('<br>')
       console.log "[BUILD] On Demand: #{file.1} --> #{file.0}"
       res.send fs.read-file-sync file.0
 
@@ -246,7 +246,7 @@ backend = do
         )
       ..get \/200, (req,res) -> res.json(req.user)
       ..get \/403, (req,res) -> res.status(403)send!
-      ..get \/login, (req, res) -> res.render \auth/index.jade
+      ..get \/login, (req, res) -> res.render \auth/index.pug
 
       ..get \/logout, (req, res) ->
         req.logout!
