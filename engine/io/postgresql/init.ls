@@ -3,7 +3,11 @@ require! <[../../../secret ../postgresql pg]>
 queries = []
 
 queries.push """
-create type state as enum ('active','pending','deleted','canceled','suspended','invalid');
+DO $$ BEGIN
+  create type state as enum ('active','pending','deleted','canceled','suspended','invalid');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 """
 
 queries.push """create extension if not exists pg_trgm;"""
