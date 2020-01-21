@@ -3,6 +3,10 @@ module.exports = do
   port: \8999 # backend port
   limit: '20mb'
   watch: true
+  build:
+    watcher: do
+      ignores: ['\/\..*\.swp$', '^static/s', '^static/assets/img']
+    assets: []
   superuser: \tkirby@gmail.com
   openid-provider: do
     enable: false
