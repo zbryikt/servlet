@@ -4,6 +4,7 @@ require! <[fs fs-extra path crypto LiveScript chokidar moment lderror]>
 require! <[express body-parser express-session connect-multiparty csurf express-rate-limit]>
 require! <[passport passport-local passport-facebook passport-google-oauth20]>
 require! <[nodemailer]>
+require! <[sharedb-wrapper]>
 require! <[./io/postgresql ./api ./ext ./view]>
 require! <[./aux ./watch ../secret ./watch/build/mod]>
 require! 'uglify-js': uglify-js, LiveScript: lsc
@@ -74,6 +75,10 @@ backend = do
     app.set 'views', path.join(__dirname, '../src/pug/')
     app.locals.viewdir = path.join(__dirname, '../.view/')
     app.locals.basedir = app.get \views
+
+    # =========== Sharedb
+    if config.{}sharedb.enabled =>
+      {server, sdb, connect, wss} = sharedb-wrapper {app, config: config.io-pg}
 
     # =========== Users, Login and Sessions
     get-user = (u, p, usep, detail, doCreate = false, done) ->
@@ -297,7 +302,11 @@ backend = do
       watch.on \unlink, -> mod-builder.unlink it
       watch.on \build, -> custom-builder.build it
       watch.on \unlink, -> custom-builder.unlink it
-    server = app.listen config.port, -> console.log "[SERVER] listening on port #{server.address!port}".cyan
+
+    if config.sharedb.enabled =>
+      server.listen config.port, -> console.log "[SERVER] listening on port #{server.address!port}".cyan
+    else
+      server = app.listen config.port, -> console.log "[SERVER] listening on port #{server.address!port}".cyan
     inited-time = Date.now!
     console.log "[SERVER] Initialization: #{(inited-time - start-time) / 1000}s elapsed.".yellow
     res!
